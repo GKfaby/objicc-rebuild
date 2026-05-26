@@ -1,0 +1,255 @@
+@import "tailwindcss";
+
+/* ─── Theme tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --navy:  #002147;
+  --ocean: #005f87;
+  --gold:  #c9a84c;
+  --darkbg: #0d1117;
+  --bg2:   #f8fafc;
+  --b:     #e2e8f0;
+  --s:     #64748b;
+}
+
+/* Theme: Midnight */
+[data-theme="midnight"] {
+  --navy:  #0f0f1a;
+  --ocean: #1a1a3e;
+  --gold:  #ffd700;
+}
+/* Theme: Forest */
+[data-theme="forest"] {
+  --navy:  #1a3a2a;
+  --ocean: #2d6a4f;
+  --gold:  #d4a017;
+}
+/* Theme: Sunset */
+[data-theme="sunset"] {
+  --navy:  #7c2d12;
+  --ocean: #c2410c;
+  --gold:  #fbbf24;
+}
+/* Theme: Ocean */
+[data-theme="ocean"] {
+  --navy:  #0c4a6e;
+  --ocean: #0369a1;
+  --gold:  #f59e0b;
+}
+
+/* ─── Tailwind custom colours ─────────────────────────────────────────────── */
+@theme {
+  --color-navy:   var(--navy);
+  --color-ocean:  var(--ocean);
+  --color-gold:   var(--gold);
+  --color-darkbg: var(--darkbg);
+  --color-bg2:    var(--bg2);
+}
+
+/* ─── High contrast mode ──────────────────────────────────────────────────── */
+html.high-contrast {
+  filter: contrast(1.5) saturate(0) !important;
+}
+html.high-contrast * {
+  border-color: #000 !important;
+}
+
+/* ─── Base resets ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  transition: font-size 0.2s ease;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.dark body {
+  background: var(--darkbg);
+  color: #f1f5f9;
+}
+
+/* ─── Hero background — pure CSS animated gradient, no image needed ────── */
+.hero-gradient {
+  background: linear-gradient(135deg, #001830 0%, #002147 25%, #003166 50%, #002147 75%, #001830 100%);
+  background-size: 400% 400%;
+  animation: gradient-shift 12s ease infinite;
+}
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,33,71,0.2); border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,33,71,0.4); }
+
+/* Global thin scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,33,71,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,33,71,0.3); }
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-slide-up  { animation: slide-up 0.25s ease; }
+.animate-fade-in   { animation: fade-in 0.3s ease; }
+.animate-spin      { animation: spin 0.8s linear infinite; }
+.animate-bounce    { animation: bounce 1.5s ease-in-out infinite; }
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%       { transform: translateX(-50%) translateY(-8px); }
+}
+
+/* ─── Phone input overrides ───────────────────────────────────────────────── */
+.PhoneInputInput {
+  background: #f8fafc;
+  border: none;
+  outline: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.875rem;
+  width: 100%;
+}
+.dark .PhoneInputInput {
+  background: #334155;
+  color: #f1f5f9;
+}
+.PhoneInputCountrySelect {
+  background: #f8fafc;
+  border: none;
+  border-radius: 12px;
+  padding: 8px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-right: 6px;
+}
+.dark .PhoneInputCountrySelect {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+/* ─── Focus visible ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* ─── Narration highlight (when screen reader active) ─────────────────────── */
+[data-narrate="true"] *:hover {
+  outline: 2px dashed var(--ocean);
+  outline-offset: 3px;
+}
+
+/* ─── Print styles ────────────────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; color: black; }
+}
+
+/* ─── SVG diagram helpers (for visualizer) ────────────────────────────────── */
+svg .c-blue  { fill: rgba(0,33,71,0.06); stroke: rgba(0,33,71,0.2); }
+svg .c-teal  { fill: rgba(0,95,135,0.08); stroke: rgba(0,95,135,0.25); }
+svg .c-red   { fill: rgba(220,38,38,0.06); stroke: rgba(220,38,38,0.2); }
+svg .c-amber { fill: rgba(245,158,11,0.08); stroke: rgba(245,158,11,0.25); }
+svg .c-purple { fill: rgba(124,58,237,0.08); stroke: rgba(124,58,237,0.25); }
+svg .c-gray  { fill: rgba(100,116,139,0.08); stroke: rgba(100,116,139,0.2); }
+svg .th { font: bold 11px/1.3 'Inter',sans-serif; fill: #1e293b; }
+svg .ts { font: 500 9.5px/1.4 'Inter',sans-serif; fill: #64748b; }
+svg .arr { stroke: #94a3b8; fill: none; stroke-width: 1; }
+svg .bg2 { fill: rgba(248,250,252,0.8); }
+
+/* ─── Logo rendering — guaranteed fix ────────────────────────────────────────
+   Strategy: navy background on the wrapper hides any black pixels.
+   Black on navy = invisible. No blend modes, no isolation, no flicker.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Navbar logo pill — small, sits in the nav bar */
+.logo-nav-wrap {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: #002147;               /* exact navy — hides any black edges */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.15),
+              0 0 12px rgba(255,255,255,0.12);
+  overflow: hidden;
+}
+.logo-nav-wrap img {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+  mix-blend-mode: screen;  /* black pixels disappear against navy wrapper bg */
+}
+
+/* Hero logo disc — large, centred in the hero */
+.logo-hero-wrap {
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: #002147;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px rgba(201,168,76,0.5),
+    0 0 0 6px rgba(255,255,255,0.06),
+    0 0 40px rgba(255,255,255,0.2),
+    0 0 80px rgba(201,168,76,0.15);
+}
+.logo-hero-wrap img {
+  width: 8rem;
+  height: 8rem;
+  object-fit: contain;
+  mix-blend-mode: screen;  /* black pixels blend away into navy background */
+}
+@media (min-width: 768px) {
+  .logo-hero-wrap { width: 11rem; height: 11rem; }
+  .logo-hero-wrap img { width: 10rem; height: 10rem; }
+}
+
+/* Footer logo */
+.logo-footer-wrap {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: #002147;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+.logo-footer-wrap img {
+  width: 3.25rem;
+  height: 3.25rem;
+  object-fit: contain;
+  mix-blend-mode: screen;
+}
