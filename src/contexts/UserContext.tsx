@@ -52,7 +52,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'global'), (snap) => {
       if (snap.exists()) {
-        setSystemSettings((prev) => ({ ...prev, ...snap.data() }));
+        const data = snap.data();
+        // Strip out any empty/null/undefined values so they never overwrite
+        // working defaults (e.g. logoUrl: '' must not replace '/logo.png')
+        const clean = Object.fromEntries(
+          Object.entries(data).filter(([, v]) =>
+            v !== null && v !== undefined && v !== ''
+          )
+        );
+        setSystemSettings((prev) => ({ ...prev, ...clean }));
       }
     });
     return unsub;

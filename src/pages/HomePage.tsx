@@ -44,7 +44,12 @@ export default function HomePage() {
                   src={systemSettings.logoUrl}
                   alt={systemSettings.orgName}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).closest('.logo-hero-wrap')?.classList.add('hidden');
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== window.location.origin + '/logo.png') {
+                      img.src = '/logo.png';
+                    } else {
+                      img.closest('.logo-hero-wrap')?.classList.add('hidden');
+                    }
                   }}
                 />
               </div>

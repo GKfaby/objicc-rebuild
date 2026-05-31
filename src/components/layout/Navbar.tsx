@@ -53,7 +53,14 @@ export default function Navbar() {
           <img
             src={systemSettings.logoUrl}
             alt={systemSettings.orgName}
-            onError={() => setLogoError(true)}
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              if (img.src !== window.location.origin + '/logo.png') {
+                img.src = '/logo.png'; // fall back to local logo
+              } else {
+                setLogoError(true); // local logo also failed → show monogram
+              }
+            }}
           />
         </div>
       ) : (
