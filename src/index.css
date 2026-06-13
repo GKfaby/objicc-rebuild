@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Tailwind v4 defaults to OS-level dark mode (prefers-color-scheme).
+   This makes dark: utilities respond to the .dark class on <html> instead,
+   so our in-app dark mode toggle actually works. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --navy: #002147; --ocean: #005f87; --gold: #c9a84c; --darkbg: #0d1117;
 }
@@ -38,14 +43,14 @@ body { font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:anti
 .animate-spin{animation:spin .8s linear infinite}
 .animate-bounce{animation:bounce 1.5s ease-in-out infinite}
 
-/* Logo wrappers — navy bg hides any black artifact pixels */
-.logo-nav-wrap{width:2.75rem;height:2.75rem;border-radius:50%;background:#002147;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 0 1.5px rgba(255,255,255,.15),0 0 12px rgba(255,255,255,.12)}
-.logo-nav-wrap img{width:2.25rem;height:2.25rem;object-fit:contain;mix-blend-mode:screen}
-.logo-hero-wrap{width:9rem;height:9rem;border-radius:50%;background:#002147;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 0 2px rgba(201,168,76,.5),0 0 0 6px rgba(255,255,255,.06),0 0 40px rgba(255,255,255,.2),0 0 80px rgba(201,168,76,.15)}
-.logo-hero-wrap img{width:8rem;height:8rem;object-fit:contain;mix-blend-mode:screen}
-@media(min-width:768px){.logo-hero-wrap{width:11rem;height:11rem}.logo-hero-wrap img{width:10rem;height:10rem}}
-.logo-footer-wrap{width:4rem;height:4rem;border-radius:50%;background:#002147;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,.1)}
-.logo-footer-wrap img{width:3.25rem;height:3.25rem;object-fit:contain;mix-blend-mode:screen}
+/* Logo — no background disc, just a soft glow behind the image itself */
+.logo-nav-wrap{width:2.75rem;height:2.75rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-nav-wrap img{width:2.75rem;height:2.75rem;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,255,255,.35))}
+.logo-hero-wrap{width:9rem;height:9rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-hero-wrap img{width:9rem;height:9rem;object-fit:contain;filter:drop-shadow(0 0 24px rgba(255,255,255,.35)) drop-shadow(0 0 60px rgba(255,255,255,.15))}
+@media(min-width:768px){.logo-hero-wrap{width:11rem;height:11rem}.logo-hero-wrap img{width:11rem;height:11rem}}
+.logo-footer-wrap{width:4rem;height:4rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-footer-wrap img{width:4rem;height:4rem;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,255,255,.25))}
 
 .PhoneInputInput{background:#f8fafc;border:none;outline:none;padding:12px 16px;border-radius:12px;font-weight:700;color:var(--navy);font-size:.875rem;width:100%}
 .dark .PhoneInputInput{background:#334155;color:#f1f5f9}

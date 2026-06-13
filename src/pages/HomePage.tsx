@@ -13,7 +13,7 @@ export default function HomePage(){
         {[800,600,400].map(s=><div key={s} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/5" style={{width:s,height:s}}/>)}
         {[...Array(16)].map((_,i)=><div key={i} className="absolute w-1 h-1 bg-white/20 rounded-full animate-pulse" style={{left:`${(i*37+10)%90+5}%`,top:`${(i*53+15)%70+10}%`,animationDelay:`${i*0.3}s`,animationDuration:`${2+(i%3)}s`}}/>)}
       </div>
-      <div className="relative z-10 text-center px-4 max-w-5xl mx-auto flex-1 flex flex-col items-center justify-center pb-48">
+      <div className="relative z-10 text-center px-4 max-w-5xl mx-auto flex-1 flex flex-col items-center justify-center pt-28 pb-48">
         {systemSettings.logoUrl&&(
           <div className="flex justify-center mb-8">
             <div className="logo-hero-wrap">
