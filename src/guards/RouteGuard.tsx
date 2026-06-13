@@ -9,7 +9,7 @@ export const RouteGuard:React.FC<Props>=({children,allowedRoles,guestOnly=false,
   if(loading)return<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-navy/20 border-t-navy rounded-full animate-spin"/></div>;
   if(guestOnly&&firebaseUser&&!needsProfileCompletion)return<Navigate to={redirectTo??'/'} replace/>;
   if(!guestOnly&&!firebaseUser)return<Navigate to="/login" state={{from:location}} replace/>;
-  if(firebaseUser&&needsProfileCompletion&&!guestOnly)return<Navigate to="/complete-profile" replace/>;
+  if(firebaseUser&&needsProfileCompletion&&!guestOnly&&location.pathname!=='/complete-profile')return<Navigate to="/complete-profile" replace/>;
   if(allowedRoles&&profile){const rs=Array.isArray(allowedRoles)?allowedRoles:[allowedRoles];if(!rs.includes(profile.role)){if(['pending_cadet','pending_parent'].includes(profile.role))return<Navigate to="/pending" replace/>;return<Navigate to={redirectTo??'/unauthorized'} replace/>;}}
   return<>{children}</>;
 };

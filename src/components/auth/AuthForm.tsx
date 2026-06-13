@@ -29,7 +29,8 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
   const set=(k:string,v:string)=>setForm(p=>({...p,[k]:v}));
   const validatePw=(pw:string,c:string)=>{if(pw.length<8)throw new Error('Password must be at least 8 characters.');if(!/[A-Z]/.test(pw))throw new Error('Password must contain at least one uppercase letter.');if(!/[!@#$%^&*(),.?":{}|<>]/.test(pw))throw new Error('Password must contain at least one symbol.');if(pw!==c)throw new Error('Passwords do not match.');};
   const validate=()=>{if(mode==='login')return;if(!form.firstName.trim()||!/^[a-zA-Z\s]+$/.test(form.firstName))throw new Error('First name must contain only letters.');if(!form.lastName.trim()||!/^[a-zA-Z\s]+$/.test(form.lastName))throw new Error('Last name must contain only letters.');validatePw(form.password,form.confirmPassword);if(!form.phone||!isValidPhoneNumber(form.phone))throw new Error('Please enter a valid phone number.');if(role==='cadet'&&!form.school)throw new Error('Please select your school.');if(role==='parent'){if(!form.cadetFirstName.trim())throw new Error("Cadet first name required.");if(!form.cadetLastName.trim())throw new Error("Cadet last name required.");if(!form.cadetSchool)throw new Error("Cadet school required.");}};
-  const buildUser=async(uid:string,email:string,dn:string,isFirst:boolean)=>{const r=isFirst?'super_admin':role==='cadet'?'pending_cadet':'pending_parent';const base:any={uid,email,displayName:dn,firstName:form.firstName.trim(),lastName:form.lastName.trim(),phone:form.phone,role:r,requestedRole:role,status:isFirst?'approved':'pending',createdAt:serverTimestamp()};if(role==='cadet'){base.middleInitial=form.middleInitial;base.school=form.school;base.cadetName=`Cadet ${dn}`;}else{base.cadetFirstName=form.cadetFirstName.trim();base.cadetLastName=form.cadetLastName.trim();base.cadetMiddleInitial=form.cadetMiddleInitial;base.cadetSchool=form.cadetSchool;}if(isFirst){for(const[rid,perms] of Object.entries(DEFAULT_PERMISSIONS)){const ref=doc(db,'roles',rid);if(!(await getDoc(ref)).exists())await setDoc(ref,{name:rid.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),permissions:perms,isSystem:true,createdAt:serverTimestamp()});}}return base;};
+  const buildUser=async(uid:string,email:string,dn:string,isFirst:boolean)=>{const r=isFirst?'super_admin':role==='cadet'?'pending_cadet':'pending_parent';const base:any={uid,email,displayName:dn,firstName:form.firstName.trim(),lastName:form.lastName.trim(),phone:form.phone,role:r,requestedRole:role,status:isFirst?'approved':'pending',createdAt:serverTimestamp()};if(role==='cadet'){base.middleInitial=form.middleInitial;base.school=form.school;base.cadetName=`Cadet ${dn}`;}else{base.cadetFirstName=form.cadetFirstName.trim();base.cadetLastName=form.cadetLastName.trim();base.cadetMiddleInitial=form.cadetMiddleInitial;base.cadetSchool=form.cadetSchool;}return base;};
+  const seedRoles=async()=>{for(const[rid,perms] of Object.entries(DEFAULT_PERMISSIONS)){const ref=doc(db,'roles',rid);if(!(await getDoc(ref)).exists())await setDoc(ref,{name:rid.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),permissions:perms,isSystem:true,createdAt:serverTimestamp()});}};
   const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setLoading(true);setError('');
     try{validate();
       if(mode==='login'){await signInWithEmailAndPassword(auth,form.email,form.password);navigate(from,{replace:true});return;}
@@ -41,9 +42,12 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
       if(!uid)throw new Error('Auth failed.');
       const configRef=doc(db,'system','config');const isFirst=!(await getDoc(configRef)).exists();
       const userData=await buildUser(uid,email,dn,isFirst);
+      // Create the user's own profile FIRST so security rules can see
+      // their role (super_admin for the first user) before any other writes.
+      await setDoc(doc(db,'users',uid),userData);
+      if(isFirst)await seedRoles();
       const batch=writeBatch(db);
       if(isFirst)batch.set(configRef,{initialized:true,createdAt:serverTimestamp()});
-      batch.set(doc(db,'users',uid),userData);
       batch.set(doc(collection(db,'user_updates')),{userId:uid,message:`${form.firstName} ${form.lastName} registered.`,timestamp:serverTimestamp()});
       await batch.commit();
       await setDoc(doc(collection(db,'users',uid,'notifications')),{title:isFirst?'Welcome, Super Admin!':'Registration Complete',message:isFirst?'Full Super Admin access granted.':`Your account is pending approval as ${ROLE_LABELS[userData.role]}.`,type:'info',read:false,createdAt:serverTimestamp()});
