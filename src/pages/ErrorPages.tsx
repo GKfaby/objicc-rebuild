@@ -1,40 +1,4 @@
-import { Link } from 'react-router-dom';
-import { Home, ShieldOff } from 'lucide-react';
-
-export function NotFoundPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-darkbg px-4">
-      <div className="text-center">
-        <div className="text-8xl font-black text-navy/10 dark:text-white/5 mb-4">404</div>
-        <h1 className="text-3xl font-black text-navy dark:text-white uppercase tracking-tight mb-3">Page Not Found</h1>
-        <p className="text-slate-500 mb-8">The page you're looking for doesn't exist or has been moved.</p>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-navy text-white font-black rounded-xl uppercase tracking-widest text-sm hover:bg-ocean transition-colors"
-        >
-          <Home className="w-4 h-4" /> Back Home
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-export function UnauthorizedPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-darkbg px-4">
-      <div className="text-center">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <ShieldOff className="w-10 h-10 text-red-400" />
-        </div>
-        <h1 className="text-3xl font-black text-navy dark:text-white uppercase tracking-tight mb-3">Access Denied</h1>
-        <p className="text-slate-500 mb-8">You don't have permission to view this page.</p>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-navy text-white font-black rounded-xl uppercase tracking-widest text-sm hover:bg-ocean transition-colors"
-        >
-          <Home className="w-4 h-4" /> Back Home
-        </Link>
-      </div>
-    </div>
-  );
-}
+import{Link} from 'react-router-dom';
+import{Home,ShieldOff} from 'lucide-react';
+export function NotFoundPage(){return(<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-darkbg px-4"><div className="text-center"><div className="text-8xl font-black text-navy/10 dark:text-white/5 mb-4">404</div><h1 className="text-3xl font-black text-navy dark:text-white uppercase tracking-tight mb-3">Page Not Found</h1><p className="text-slate-500 mb-8">The page you are looking for does not exist.</p><Link to="/" className="inline-flex items-center gap-2 px-6 py-3 bg-navy text-white font-black rounded-xl uppercase tracking-widest text-sm hover:bg-ocean transition-colors"><Home className="w-4 h-4"/>Back Home</Link></div></div>);}
+export function UnauthorizedPage(){return(<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-darkbg px-4"><div className="text-center"><div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><ShieldOff className="w-10 h-10 text-red-400"/></div><h1 className="text-3xl font-black text-navy dark:text-white uppercase tracking-tight mb-3">Access Denied</h1><p className="text-slate-500 mb-8">You do not have permission to view this page.</p><Link to="/" className="inline-flex items-center gap-2 px-6 py-3 bg-navy text-white font-black rounded-xl uppercase tracking-widest text-sm hover:bg-ocean transition-colors"><Home className="w-4 h-4"/>Back Home</Link></div></div>);}

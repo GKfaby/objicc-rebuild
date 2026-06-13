@@ -1,39 +1,124 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuth()       { return request.auth != null; }
-    function uid()          { return request.auth.uid; }
-    function userRole()     { return get(/databases/$(database)/documents/users/$(uid())).data.role; }
-    function isSuperAdmin() { return userRole() == 'super_admin'; }
-    function isAdmin()      { return userRole() in ['super_admin', 'admin']; }
-    function isStaff()      { return userRole() in ['super_admin', 'admin', 'staff', 'recruitment_officer', 'editor']; }
-    function isMember()     { return userRole() in ['super_admin', 'admin', 'staff', 'recruitment_officer', 'editor', 'cadet', 'parent']; }
-    function isOwner(userId){ return uid() == userId; }
 
-    match /system/{doc}       { allow read: if true; allow write: if isSuperAdmin(); }
-    match /settings/{doc}     { allow read: if true; allow write: if isAdmin(); }
-    match /roles/{roleId}     { allow read: if isAuth(); allow write: if isAdmin(); }
-    match /posts/{postId}     { allow read: if true; allow write: if isStaff(); }
-    match /applications/{id}  { allow read: if isStaff(); allow create: if true; allow update: if isStaff(); allow delete: if isAdmin(); }
-    match /merchandise/{id}   { allow read: if isAuth() && isMember(); allow write: if isStaff(); }
-    match /suggestions/{id}   { allow create: if true; allow read, update, delete: if isStaff(); }
-    match /user_updates/{id}  { allow read: if isStaff(); allow create: if isAuth(); allow delete: if isAdmin(); }
-    match /secure_settings/{doc} { allow read, write: if isSuperAdmin(); }
-    match /merch_requests/{id} {
-      allow read: if isAuth() && (resource.data.userUid == uid() || isStaff());
-      allow create: if isAuth() && isMember();
-      allow update: if isStaff();
-      allow delete: if isAdmin();
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function myRole() {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : 'visitor';
     }
-    match /users/{userId} {
-      allow read:   if isAuth() && (isOwner(userId) || isStaff());
-      allow create: if isAuth() && isOwner(userId);
-      allow update: if isAuth() && (isOwner(userId) || isStaff());
+    function isStaff() {
+      return myRole() in ['super_admin','admin','staff','recruitment_officer','editor'];
+    }
+    function isAdmin() {
+      return myRole() in ['super_admin','admin'];
+    }
+    function isSuperAdmin() {
+      return myRole() == 'super_admin';
+    }
+
+    // Users
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isStaff();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isStaff();
       allow delete: if isAdmin();
+
       match /notifications/{notifId} {
-        allow read, write, delete: if isAuth() && isOwner(userId);
-        allow create: if isStaff();
+        allow read, update, delete: if isOwner(uid);
+        allow create: if isSignedIn();
       }
+    }
+
+    // Roles & permissions
+    match /roles/{roleId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // System config (first-user flag)
+    match /system/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Posts (notices & events)
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // Applications (enrollment)
+    match /applications/{appId} {
+      allow read: if isStaff();
+      allow create: if true;
+      allow update, delete: if isStaff();
+    }
+
+    // Merchandise
+    match /merchandise/{itemId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // Merch requests / orders
+    match /merch_requests/{reqId} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update, delete: if isStaff();
+    }
+
+    // Suggestions
+    match /suggestions/{sugId} {
+      allow read: if isStaff();
+      allow create: if true;
+      allow update, delete: if isStaff();
+    }
+
+    // Activity log
+    match /user_updates/{updateId} {
+      allow read: if isStaff();
+      allow create: if isSignedIn();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Secure settings (payment keys etc.)
+    match /secure_settings/{docId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // Conversations (member <-> admin messaging)
+    match /conversations/{convId} {
+      allow read, update: if isSignedIn() &&
+        (request.auth.uid in resource.data.participants || isStaff());
+      allow create: if isSignedIn();
+      allow delete: if isAdmin();
+
+      match /messages/{msgId} {
+        allow read: if isSignedIn() &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || isStaff());
+        allow create: if isSignedIn() &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || isStaff());
+        allow update: if isSignedIn();
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Broadcasts (admin -> roles)
+    match /broadcasts/{bcastId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff();
+      allow update: if isSignedIn(); // allow readBy array updates
+      allow delete: if isAdmin();
     }
   }
 }
