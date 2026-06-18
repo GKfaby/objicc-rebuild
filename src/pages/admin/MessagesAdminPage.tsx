@@ -9,16 +9,17 @@ import type{Role} from '../../types';
 const BR:Role[]=['cadet','parent','pending_cadet','pending_parent','staff','editor','recruitment_officer','admin'];
 interface Msg{id:string;content:string;senderId:string;senderName:string;createdAt:any;readBy:string[];}
 interface Conv{id:string;subject:string;participants:string[];participantNames:Record<string,string>;lastMessage:string;lastMessageAt:any;unread:Record<string,number>;}
+interface Bcast{id:string;title:string;content:string;sentByName:string;targetRoles:string[];createdAt:any;readBy:string[];}
 export default function MessagesAdminPage(){
   const{firebaseUser,profile}=useUser();const{showToast}=useToast();
-  const[convs,setConvs]=useState<Conv[]>([]);const[active,setActive]=useState<Conv|null>(null);
+  const[convs,setConvs]=useState<Conv[]>([]);const[active,setActive]=useState<Conv|null>(null);const[activeBcast,setActiveBcast]=useState<Bcast|null>(null);
   const[msgs,setMsgs]=useState<Msg[]>([]);const[text,setText]=useState('');const[sending,setSending]=useState(false);
   const[search,setSearch]=useState('');const[tab,setTab]=useState<'messages'|'broadcasts'>('messages');
   const[showBcast,setShowBcast]=useState(false);const[btitle,setBtitle]=useState('');const[bcontent,setBcontent]=useState('');const[broles,setBroles]=useState<Role[]>([]);
-  const[bcasts,setBcasts]=useState<any[]>([]);const bottomRef=useRef<HTMLDivElement>(null);
+  const[bcasts,setBcasts]=useState<Bcast[]>([]);const bottomRef=useRef<HTMLDivElement>(null);
   if(!firebaseUser||!profile)return null;
   useEffect(()=>{const q=query(collection(db,'conversations'),orderBy('lastMessageAt','desc'));return onSnapshot(q,snap=>{setConvs(snap.docs.map(d=>({id:d.id,...d.data()} as Conv)));});},[]);
-  useEffect(()=>{const q=query(collection(db,'broadcasts'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setBcasts(snap.docs.map(d=>({id:d.id,...d.data()})));});},[]);
+  useEffect(()=>{const q=query(collection(db,'broadcasts'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setBcasts(snap.docs.map(d=>({id:d.id,...d.data()} as Bcast)));});},[]);
   useEffect(()=>{if(!active){setMsgs([]);return;}const q=query(collection(db,'conversations',active.id,'messages'),orderBy('createdAt','asc'));return onSnapshot(q,async snap=>{const m=snap.docs.map(d=>({id:d.id,...d.data()} as Msg));setMsgs(m);for(const msg of m.filter(m=>!m.readBy?.includes(firebaseUser.uid)&&m.senderId!==firebaseUser.uid))await updateDoc(doc(db,'conversations',active.id,'messages',msg.id),{readBy:[...(msg.readBy||[]),firebaseUser.uid]});if((active.unread?.[firebaseUser.uid]||0)>0)await updateDoc(doc(db,'conversations',active.id),{[`unread.${firebaseUser.uid}`]:0});});},[active?.id,firebaseUser.uid]);
   useEffect(()=>bottomRef.current?.scrollIntoView({behavior:'smooth'}),[msgs]);
   const reply=async()=>{if(!text.trim()||!active)return;setSending(true);const c=text.trim();setText('');
@@ -26,6 +27,7 @@ export default function MessagesAdminPage(){
       const others=active.participants.filter(p=>p!==firebaseUser.uid);const u:any={lastMessage:c,lastMessageAt:serverTimestamp()};others.forEach(uid=>{u[`unread.${uid}`]=(active.unread?.[uid]||0)+1;});await updateDoc(doc(db,'conversations',active.id),u);
       for(const uid of others)await addDoc(collection(db,'users',uid,'notifications'),{title:'New Reply',message:`${profile.displayName}: ${c.slice(0,60)}`,type:'info',read:false,createdAt:serverTimestamp(),link:'/messages'});
     }catch{showToast('Failed.','error');}finally{setSending(false);}};
+  const markBread=async(b:Bcast)=>{if(b.readBy?.includes(firebaseUser.uid))return;await updateDoc(doc(db,'broadcasts',b.id),{readBy:[...(b.readBy||[]),firebaseUser.uid]});};
   const sendBcast=async()=>{if(!btitle.trim()||!bcontent.trim()){showToast('Fill in title and message.','error');return;}setSending(true);
     try{await addDoc(collection(db,'broadcasts'),{title:btitle.trim(),content:bcontent.trim(),sentBy:firebaseUser.uid,sentByName:profile.displayName,targetRoles:broles,createdAt:serverTimestamp(),readBy:[firebaseUser.uid]});
       const{getDocs:gd}=await import('firebase/firestore');const uq=broles.length?query(collection(db,'users'),where('role','in',broles)):query(collection(db,'users'));const usnap=await gd(uq);
@@ -33,7 +35,7 @@ export default function MessagesAdminPage(){
       setShowBcast(false);setBtitle('');setBcontent('');setBroles([]);showToast('Broadcast sent!','success');
     }catch{showToast('Failed.','error');}finally{setSending(false);}};
   const toggleRole=(r:Role)=>setBroles(p=>p.includes(r)?p.filter(x=>x!==r):[...p,r]);
-  const fmt=(ts:any)=>{if(!ts?.toDate)return'';const d=ts.toDate(),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([],{month:'short',day:'numeric'});};
+  const fmt=(ts:any)=>{if(!ts?.toDate)return'Sending...';const d=ts.toDate(),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([],{month:'short',day:'numeric'});};
   const total=convs.reduce((s,c)=>s+(c.unread?.[firebaseUser.uid]||0),0);
   const filtered=convs.filter(c=>!search||c.subject?.toLowerCase().includes(search.toLowerCase())||Object.values(c.participantNames||{}).some(n=>n.toLowerCase().includes(search.toLowerCase())));
   return(<div className="space-y-6">
@@ -49,18 +51,28 @@ export default function MessagesAdminPage(){
           <div className="flex-1 overflow-y-auto">
             {tab==='messages'?(filtered.length===0?<div className="p-8 text-center text-slate-400"><MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30"/><p className="text-xs font-bold">No conversations</p></div>
             :filtered.map(c=>{const u=c.unread?.[firebaseUser.uid]||0;const name=Object.entries(c.participantNames||{}).find(([uid])=>uid!==firebaseUser.uid)?.[1]||'Member';
-              return(<button key={c.id} onClick={()=>setActive(c)} className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${active?.id===c.id?'bg-navy/5 dark:bg-navy/20 border-l-4 border-l-navy dark:border-l-gold':''}`}>
+              return(<button key={c.id} onClick={()=>{setActive(c);setActiveBcast(null);}} className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${active?.id===c.id?'bg-navy/5 dark:bg-navy/20 border-l-4 border-l-navy dark:border-l-gold':''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1"><p className={`text-sm truncate ${u>0?'font-black text-navy dark:text-white':'font-bold text-slate-600 dark:text-slate-300'}`}>{c.subject}</p><p className="text-xs text-slate-400 truncate">{name}</p><p className="text-xs text-slate-400 truncate">{c.lastMessage}</p></div>
                   <div className="flex flex-col items-end gap-1 shrink-0"><span className="text-xs text-slate-400">{fmt(c.lastMessageAt)}</span>{u>0&&<span className="w-5 h-5 bg-gold text-navy rounded-full text-xs font-black flex items-center justify-center">{u}</span>}</div>
                 </div>
               </button>);}))
             :(bcasts.length===0?<div className="p-8 text-center text-slate-400"><Megaphone className="w-8 h-8 mx-auto mb-2 opacity-30"/><p className="text-xs font-bold">No broadcasts yet</p></div>
-            :bcasts.map(b=><div key={b.id} className="px-4 py-3 border-b border-slate-50 dark:border-slate-700/50"><p className="text-sm font-black text-navy dark:text-white truncate">{b.title}</p><p className="text-xs text-slate-400 mt-0.5">{b.targetRoles?.length?b.targetRoles.map((r:Role)=>ROLE_LABELS[r]).join(', '):'All users'}</p><p className="text-xs text-slate-400 truncate">{b.content}</p></div>))}
+            :bcasts.map(b=>{const read=b.readBy?.includes(firebaseUser.uid);return(<button key={b.id} onClick={()=>{setActiveBcast(b);setActive(null);markBread(b);}} className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${activeBcast?.id===b.id?'bg-navy/5 dark:bg-navy/20 border-l-4 border-l-navy dark:border-l-gold':''}`}>
+              <div className="flex items-start gap-2">{!read&&<div className="w-2 h-2 rounded-full bg-gold mt-1.5 shrink-0"/>}<div className="min-w-0"><p className={`text-sm truncate ${!read?'font-black text-navy dark:text-white':'font-bold text-slate-600 dark:text-slate-300'}`}>{b.title}</p><p className="text-xs text-slate-400 mt-0.5">{b.targetRoles?.length?b.targetRoles.map((r:Role)=>ROLE_LABELS[r]).join(', '):'All users'}</p><p className="text-xs text-slate-400 truncate">{b.content}</p></div></div>
+            </button>);}))}
           </div>
         </div>
-        <div className={`flex-1 flex flex-col ${!active?'hidden md:flex':'flex'}`}>
-          {active?(<>
+        <div className={`flex-1 flex flex-col ${!active&&!activeBcast?'hidden md:flex':'flex'}`}>
+          {activeBcast?(<>
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-700 shrink-0">
+              <button onClick={()=>setActiveBcast(null)} className="md:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><ChevronLeft className="w-4 h-4 text-slate-400"/></button>
+              <div className="flex items-center gap-2"><Megaphone className="w-4 h-4 text-gold shrink-0"/><div><p className="font-black text-navy dark:text-white text-sm">{activeBcast.title}</p><p className="text-xs text-slate-400">From {activeBcast.sentByName} · {fmt(activeBcast.createdAt)} · {activeBcast.targetRoles?.length?activeBcast.targetRoles.map((r:Role)=>ROLE_LABELS[r]).join(', '):'All users'}</p></div></div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{activeBcast.content}</p>
+            </div>
+          </>):active?(<>
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-700 shrink-0">
               <button onClick={()=>setActive(null)} className="md:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><ChevronLeft className="w-4 h-4 text-slate-400"/></button>
               <div><p className="font-black text-navy dark:text-white text-sm">{active.subject}</p><p className="text-xs text-slate-400">{Object.entries(active.participantNames||{}).filter(([uid])=>uid!==firebaseUser.uid).map(([,n])=>n).join(', ')}</p></div>
@@ -68,7 +80,7 @@ export default function MessagesAdminPage(){
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {msgs.map(msg=>{const mine=msg.senderId===firebaseUser.uid;return(<div key={msg.id} className={`flex ${mine?'justify-end':'justify-start'}`}>
                 <div className={`max-w-xs lg:max-w-md flex flex-col gap-1 ${mine?'items-end':'items-start'}`}>
-                  {!mine&&<span className="text-xs text-slate-400 font-bold px-1">{msg.senderName}</span>}
+                  <span className="text-xs text-slate-400 font-bold px-1">{mine?"You":msg.senderName}</span>
                   <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${mine?'bg-navy text-white rounded-br-sm':'bg-slate-100 dark:bg-slate-700 text-navy dark:text-white rounded-bl-sm'}`}>{msg.content}</div>
                   <div className={`flex items-center gap-1 px-1 ${mine?'justify-end':''}`}><span className="text-xs text-slate-300 dark:text-slate-600">{fmt(msg.createdAt)}</span>{mine&&(msg.readBy?.length>1?<CheckCheck className="w-3 h-3 text-gold"/>:<Check className="w-3 h-3 text-slate-300"/>)}</div>
                 </div>
@@ -80,7 +92,7 @@ export default function MessagesAdminPage(){
                 <button onClick={reply} disabled={sending||!text.trim()} className="p-2.5 bg-navy text-white rounded-xl hover:bg-ocean disabled:opacity-40"><Send className="w-4 h-4"/></button>
               </div>
             </div>
-          </>):(<div className="flex-1 flex items-center justify-center text-slate-300 dark:text-slate-600 flex-col gap-3"><MessageSquare className="w-12 h-12"/><p className="text-sm font-bold">Select a conversation</p></div>)}
+          </>):(<div className="flex-1 flex items-center justify-center text-slate-300 dark:text-slate-600 flex-col gap-3"><MessageSquare className="w-12 h-12"/><p className="text-sm font-bold">{tab==="broadcasts"?"Select a broadcast":"Select a conversation"}</p></div>)}
         </div>
       </div>
     </div>

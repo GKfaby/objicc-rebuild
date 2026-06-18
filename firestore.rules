@@ -21,7 +21,8 @@ service cloud.firestore {
 
     // Users
     match /users/{uid} {
-      allow read: if isOwner(uid) || isStaff();
+      allow read: if isOwner(uid) || isStaff() ||
+        (isSignedIn() && resource.data.role in ['super_admin','admin','staff','recruitment_officer','editor']);
       allow create: if isOwner(uid);
       allow update: if isOwner(uid) || isStaff();
       allow delete: if isAdmin();

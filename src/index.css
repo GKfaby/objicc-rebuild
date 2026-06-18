@@ -58,3 +58,30 @@ body { font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:anti
 .dark .PhoneInputCountrySelect{background:#334155;color:#f1f5f9}
 
 @media print{.no-print{display:none!important}body{background:white;color:black}}
+/* ─── Accessibility: WCAG AA contrast fixes ───────────────────────────────
+   text-slate-400/300 are too light on white backgrounds (≈2.8:1 / 1.7:1),
+   failing the 4.5:1 ratio required for normal text. Boost them globally
+   to meet AA without touching every component.                          */
+.text-slate-400 { color: #475569 !important; }   /* was #94a3b8 → now slate-600, ~7:1 on white */
+.text-slate-300 { color: #64748b !important; }   /* was #cbd5e1 → now slate-500, ~4.6:1 on white */
+
+/* In dark mode, slate-600 text on near-black backgrounds is too dim */
+:where(.dark, .dark *) .dark\:text-slate-600 { color: #94a3b8 !important; } /* → slate-400, ~8:1 */
+
+/* Inputs/selects/textareas on bg-slate-50 are nearly invisible against
+   white cards — add a visible border so field boundaries are clear.    */
+input.bg-slate-50, textarea.bg-slate-50, select.bg-slate-50,
+.bg-slate-50 input, .bg-slate-50 textarea, .bg-slate-50 select {
+  border: 1px solid #e2e8f0;
+}
+:where(.dark, .dark *) input.bg-slate-700,
+:where(.dark, .dark *) textarea.bg-slate-700,
+:where(.dark, .dark *) select.bg-slate-700 {
+  border: 1px solid #475569;
+}
+
+/* White cards on the light-mode page background (#f8fafc) need a subtle
+   border to stay distinguishable since the colors are very close.       */
+.bg-white.rounded-2xl, .bg-white.rounded-3xl {
+  border: 1px solid #f1f5f9;
+}
