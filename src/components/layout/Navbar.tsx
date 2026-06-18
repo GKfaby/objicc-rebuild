@@ -1,14 +1,16 @@
 import{useState,useEffect} from 'react';
 import{Link,useLocation,useNavigate} from 'react-router-dom';
-import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell,MessageSquare} from 'lucide-react';
-import{auth} from '../../firebase';
+import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell} from 'lucide-react';
+import{auth,db} from '../../firebase';
 import{signOut} from 'firebase/auth';
+import{collection,query,where,onSnapshot} from 'firebase/firestore';
 import{useUser} from '../../contexts/UserContext';
 import{useTheme} from '../../contexts/ThemeContext';
 export default function Navbar(){
   const[scrolled,setScrolled]=useState(false);
   const[mobileOpen,setMobileOpen]=useState(false);
   const[logoError,setLogoError]=useState(false);
+  const[unreadCount,setUnreadCount]=useState(0);
   const{firebaseUser,profile,isStaff,isMember,isPending,systemSettings}=useUser();
   const{isDark,setColorMode}=useTheme();
   const location=useLocation();
@@ -17,6 +19,12 @@ export default function Navbar(){
   useEffect(()=>{const h=()=>setScrolled(window.scrollY>60);window.addEventListener('scroll',h,{passive:true});return()=>window.removeEventListener('scroll',h);},[]);
   useEffect(()=>setMobileOpen(false),[location]);
   useEffect(()=>setLogoError(false),[systemSettings.logoUrl]);
+  // Notification badge count
+  useEffect(()=>{
+    if(!firebaseUser)return;
+    const q=query(collection(db,'users',firebaseUser.uid,'notifications'),where('read','==',false));
+    return onSnapshot(q,snap=>setUnreadCount(snap.size));
+  },[firebaseUser]);
   const handleSignOut=async()=>{await signOut(auth);navigate('/');};
   const navLinks=[
     {label:'Home',href:'/'},
@@ -45,6 +53,7 @@ export default function Navbar(){
           )}
           <span className="text-white font-black text-lg uppercase tracking-tighter">{systemSettings.orgName}</span>
         </Link>
+        {/* Desktop */}
         <div className="hidden lg:flex items-center gap-6">
           {navLinks.map(l=>(
             <Link key={l.href} to={l.href}
@@ -59,7 +68,15 @@ export default function Navbar(){
             </button>
             {firebaseUser&&profile?(
               <>
-                <Link to="/notifications" className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Bell className="w-4 h-4"/></Link>
+                {/* Bell with badge */}
+                <Link to="/notifications" className="relative p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                  <Bell className="w-4 h-4"/>
+                  {unreadCount>0&&(
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-gold text-navy text-[10px] font-black rounded-full flex items-center justify-center px-1 leading-none">
+                      {unreadCount>99?'99+':unreadCount}
+                    </span>
+                  )}
+                </Link>
                 {isStaff&&<Link to="/admin" className="p-2 text-white/60 hover:text-gold hover:bg-white/10 rounded-lg transition-all"><LayoutDashboard className="w-4 h-4"/></Link>}
                 <Link to="/profile" className="flex items-center gap-2 pl-3 pr-4 py-2 bg-white/10 hover:bg-gold hover:text-navy text-white rounded-full text-xs font-black uppercase tracking-widest transition-all border border-white/10">
                   {profile.avatarUrl?<img src={profile.avatarUrl} className="w-5 h-5 rounded-full object-cover" alt=""/>:<div className="w-5 h-5 rounded-full bg-gold/30 flex items-center justify-center"><User className="w-3 h-3"/></div>}
@@ -73,8 +90,15 @@ export default function Navbar(){
             )}
           </div>
         </div>
+        {/* Mobile */}
         <div className="flex items-center gap-2 lg:hidden">
-          <button onClick={()=>setColorMode(isDark?'light':'dark')} className="p-2 text-white/70"><Sun className="w-4 h-4"/></button>
+          {firebaseUser&&unreadCount>0&&(
+            <Link to="/notifications" className="relative p-2 text-white/70">
+              <Bell className="w-4 h-4"/>
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-gold text-navy text-[9px] font-black rounded-full flex items-center justify-center px-0.5">{unreadCount>9?'9+':unreadCount}</span>
+            </Link>
+          )}
+          <button onClick={()=>setColorMode(isDark?'light':'dark')} className="p-2 text-white/70"><Moon className="w-4 h-4"/></button>
           <button onClick={()=>setMobileOpen(!mobileOpen)} className="p-2 text-white hover:bg-white/10 rounded-xl">
             {mobileOpen?<X className="w-5 h-5"/>:<Menu className="w-5 h-5"/>}
           </button>
@@ -89,7 +113,9 @@ export default function Navbar(){
             {firebaseUser&&profile?(
               <>
                 <Link to="/profile" className="px-4 py-3 rounded-xl font-black uppercase tracking-widest text-sm text-gold hover:bg-white/5">My Profile</Link>
-                <Link to="/notifications" className="px-4 py-3 rounded-xl font-black uppercase tracking-widest text-sm text-white/60 hover:bg-white/5 hover:text-white">Notifications</Link>
+                <Link to="/notifications" className="px-4 py-3 rounded-xl font-black uppercase tracking-widest text-sm text-white/60 hover:bg-white/5 hover:text-white flex items-center justify-between">
+                  Notifications{unreadCount>0&&<span className="px-2 py-0.5 bg-gold text-navy rounded-full text-xs font-black">{unreadCount}</span>}
+                </Link>
                 {isStaff&&<Link to="/admin" className="px-4 py-3 rounded-xl font-black uppercase tracking-widest text-sm text-white/60 hover:bg-white/5 hover:text-white">Admin Panel</Link>}
                 <button onClick={handleSignOut} className="mt-2 px-4 py-3 rounded-xl text-left text-red-400 font-black uppercase tracking-widest text-sm hover:bg-red-400/10">Sign Out</button>
               </>
