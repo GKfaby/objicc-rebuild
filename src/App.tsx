@@ -1,5 +1,5 @@
 import{BrowserRouter,Routes,Route,Navigate,useLocation} from 'react-router-dom';
-import{Suspense,useState} from 'react';
+import{useState} from 'react';
 import{UserProvider} from './contexts/UserContext';
 import{ThemeProvider} from './contexts/ThemeContext';
 import{ToastProvider} from './contexts/ToastContext';
@@ -8,6 +8,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import AdminLayout from './components/layout/AdminLayout';
 import AuthForm from './components/auth/AuthForm';
+import SessionManager from './components/SessionManager';
 import{useUser} from './contexts/UserContext';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
 import{auth,googleProvider} from './firebase';
@@ -54,11 +55,18 @@ function AdminLoginPanel({onClose}:{onClose:()=>void}){
       </div>
       <form onSubmit={handleLogin} className="px-5 py-4 space-y-3">
         {error&&<p className="text-xs text-red-500 font-bold bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{error}</p>}
-        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Email</label><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-navy dark:text-white text-sm font-bold outline-none focus:ring-2 focus:ring-navy/20"/></div>
-        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Password</label><div className="relative"><input type={showPass?'text':'password'} required value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-3 py-2.5 pr-9 bg-slate-50 dark:bg-slate-800 rounded-xl text-navy dark:text-white text-sm font-bold outline-none focus:ring-2 focus:ring-navy/20"/><button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy dark:hover:text-white">{showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div></div>
-        <button type="submit" disabled={loading} className="w-full py-2.5 bg-navy text-white font-black rounded-xl text-xs uppercase tracking-widest hover:bg-ocean transition-colors disabled:opacity-60 flex items-center justify-center gap-2">{loading?<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Lock className="w-3 h-3"/>}{loading?'Signing in...':'Sign In'}</button>
+        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Email</label>
+          <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-navy dark:text-white text-sm font-bold outline-none focus:ring-2 focus:ring-navy/20"/></div>
+        <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Password</label>
+          <div className="relative">
+            <input type={showPass?'text':'password'} required value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-3 py-2.5 pr-9 bg-slate-50 dark:bg-slate-800 rounded-xl text-navy dark:text-white text-sm font-bold outline-none focus:ring-2 focus:ring-navy/20"/>
+            <button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">{showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button>
+          </div></div>
+        <button type="submit" disabled={loading} className="w-full py-2.5 bg-navy text-white font-black rounded-xl text-xs uppercase tracking-widest hover:bg-ocean disabled:opacity-60 flex items-center justify-center gap-2">
+          {loading?<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Lock className="w-3 h-3"/>}{loading?'Signing in...':'Sign In'}
+        </button>
         <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100 dark:border-slate-800"/></div><div className="relative flex justify-center"><span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-400 font-bold uppercase tracking-widest">or</span></div></div>
-        <button type="button" onClick={handleGoogle} disabled={loading} className="w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-xl text-xs hover:border-slate-400 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">{GSIG}Continue with Google</button>
+        <button type="button" onClick={handleGoogle} disabled={loading} className="w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-xl text-xs hover:border-slate-400 disabled:opacity-60 flex items-center justify-center gap-2">{GSIG}Continue with Google</button>
       </form>
     </div>
   </div>);
@@ -66,8 +74,7 @@ function AdminLoginPanel({onClose}:{onClose:()=>void}){
 
 function MaintenanceGate({children}:{children:React.ReactNode}){
   const{systemSettings,profile}=useUser();
-  const[showLogin,setShowLogin]=useState(false);
-  const[clicks,setClicks]=useState(0);
+  const[showLogin,setShowLogin]=useState(false);const[clicks,setClicks]=useState(0);
   const handleIconClick=()=>{const n=clicks+1;setClicks(n);if(n>=3){setShowLogin(true);setClicks(0);}};
   if(systemSettings.maintenanceMode&&!['super_admin','admin'].includes(profile?.role||'')){
     return(<div className="min-h-screen flex items-center justify-center bg-navy text-white px-4 relative overflow-hidden">
@@ -97,6 +104,7 @@ function GuestRedirect(){
 export default function App(){
   return(<BrowserRouter>
     <ThemeProvider><UserProvider><ToastProvider>
+      <SessionManager/>
       <MaintenanceGate>
         <Routes>
           <Route path="/login" element={<GuestRedirect/>}/>

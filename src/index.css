@@ -1,87 +1,219 @@
 @import "tailwindcss";
 
-/* Tailwind v4 defaults to OS-level dark mode (prefers-color-scheme).
-   This makes dark: utilities respond to the .dark class on <html> instead,
-   so our in-app dark mode toggle actually works. */
+/* Tailwind v4: class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Brand tokens ─────────────────────────────────────────────────────────── */
 :root {
-  --navy: #002147; --ocean: #005f87; --gold: #c9a84c; --darkbg: #0d1117;
+  --navy:  #002147;
+  --ocean: #005f87;
+  --gold:  #c9a84c;
+  --darkbg:#0d1117;
 }
-[data-theme="midnight"] { --navy:#0f0f1a; --ocean:#1a1a3e; --gold:#ffd700; }
-[data-theme="forest"]   { --navy:#1a3a2a; --ocean:#2d6a4f; --gold:#d4a017; }
-[data-theme="sunset"]   { --navy:#7c2d12; --ocean:#c2410c; --gold:#fbbf24; }
-[data-theme="ocean"]    { --navy:#0c4a6e; --ocean:#0369a1; --gold:#f59e0b; }
 
 @theme {
-  --color-navy: var(--navy); --color-ocean: var(--ocean);
-  --color-gold: var(--gold); --color-darkbg: var(--darkbg);
+  --color-navy:   var(--navy);
+  --color-ocean:  var(--ocean);
+  --color-gold:   var(--gold);
+  --color-darkbg: var(--darkbg);
 }
 
-*,*::before,*::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; background:#f8fafc; color:#1e293b; }
-.dark body { background:var(--darkbg); color:#f1f5f9; }
+/* ── Light mode palette (from taichi theme) ──────────────────────────────── */
+:root {
+  --bg:            #b2b5af;   /* page background — warm grey-green        */
+  --card:          #a2a49f;   /* cards / panels                           */
+  --card2:         #959893;   /* secondary cards, nested panels           */
+  --text:          #020301;   /* primary text — near black                */
+  --text-muted:    #2a2c29;   /* secondary text — dark enough for AA      */
+  --text-on-color: #badcf9;   /* text on coloured surfaces                */
+  --primary:       #0f3855;   /* primary action colour                    */
+  --primary-fg:    #badcf9;   /* text on primary                          */
+  --accent:        #011fb1;   /* links / highlights                       */
+  --border:        #787a75;   /* borders and dividers                     */
+  --ring:          #0e4868;   /* focus rings                              */
+  --good:          #103f35;   /* success                                  */
+  --good-fg:       #bbe1d6;
+  --warn:          #713b0d;   /* warning                                  */
+  --warn-fg:       #ffcba9;
+  --bad:           #63130d;   /* error                                    */
+  --bad-fg:        #ffc4b8;
+  --input-bg:      #c0c3be;   /* slightly lighter than card for contrast  */
+}
 
+/* ── Dark mode palette ───────────────────────────────────────────────────── */
+.dark {
+  --bg:            #0d1117;
+  --card:          #161b22;
+  --card2:         #1e2530;
+  --text:          #e6edf3;
+  --text-muted:    #8b949e;
+  --text-on-color: #badcf9;
+  --primary:       #1f6feb;
+  --primary-fg:    #ffffff;
+  --accent:        #79c0ff;
+  --border:        #30363d;
+  --ring:          #1f6feb;
+  --good:          #196c2e;
+  --good-fg:       #aff5b4;
+  --warn:          #9e6a03;
+  --warn-fg:       #e3b341;
+  --bad:           #8e1519;
+  --bad-fg:        #ff7b72;
+  --input-bg:      #0d1117;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* ── Surface overrides — remap Tailwind colours to our palette ──────────── */
+/* Page backgrounds */
+:not(.dark) .bg-slate-50,
+:not(.dark) .min-h-screen:not(.hero-gradient):not([class*="from-navy"]):not([class*="bg-navy"]) {
+  background-color: var(--bg);
+}
+
+/* Cards and white panels */
+:not(.dark) .bg-white   { background-color: var(--card)  !important; }
+:not(.dark) .bg-slate-50 { background-color: var(--card)  !important; }
+:not(.dark) .bg-slate-100 { background-color: var(--card2) !important; }
+:not(.dark) .bg-slate-200 { background-color: #888b86    !important; }
+
+/* Dark mode card surfaces */
+.dark .bg-white    { background-color: var(--card)  !important; }
+.dark .bg-slate-50 { background-color: var(--card)  !important; }
+.dark .bg-slate-800 { background-color: var(--card) !important; }
+.dark .bg-slate-700 { background-color: var(--card2) !important; }
+.dark .bg-slate-900 { background-color: var(--bg)   !important; }
+
+/* Input fields */
+:not(.dark) input,
+:not(.dark) textarea,
+:not(.dark) select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+:not(.dark) input::placeholder,
+:not(.dark) textarea::placeholder { color: #5a5d58 !important; }
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Text colours */
+:not(.dark) .text-navy { color: var(--navy) !important; }
+:not(.dark) .text-slate-500,
+:not(.dark) .text-slate-400 { color: var(--text-muted) !important; }
+:not(.dark) .text-slate-300 { color: #3a3d38 !important; }
+:not(.dark) .text-slate-600 { color: #1a1c18 !important; }
+
+/* Borders */
+:not(.dark) .border-slate-100 { border-color: var(--border) !important; }
+:not(.dark) .border-slate-200 { border-color: var(--border) !important; }
+:not(.dark) .border-slate-50  { border-color: #8a8d88     !important; }
+.dark .border-slate-100,
+.dark .border-slate-700 { border-color: var(--border) !important; }
+
+/* Focus rings */
+:not(.dark) *:focus-visible { outline-color: var(--ring); }
+.dark *:focus-visible { outline-color: var(--ring); }
+
+/* Status colours in light mode */
+:not(.dark) .bg-green-50  { background-color: #c8ddd8 !important; }
+:not(.dark) .text-green-700 { color: var(--good) !important; }
+:not(.dark) .bg-amber-50  { background-color: #d4c4a8 !important; }
+:not(.dark) .text-amber-700 { color: var(--warn) !important; }
+:not(.dark) .bg-red-50    { background-color: #d4b8b4 !important; }
+:not(.dark) .text-red-700  { color: var(--bad) !important; }
+:not(.dark) .bg-red-100   { background-color: #c8a8a4 !important; }
+
+/* ── Hero (always dark, untouched) ───────────────────────────────────────── */
 .hero-gradient {
   background: linear-gradient(135deg,#001830 0%,#002147 25%,#003166 50%,#002147 75%,#001830 100%);
-  background-size:400% 400%; animation:gradient-shift 12s ease infinite;
+  background-size:400% 400%;
+  animation: gradient-shift 12s ease infinite;
 }
-@keyframes gradient-shift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes gradient-shift {
+  0%   { background-position:0% 50%;   }
+  50%  { background-position:100% 50%; }
+  100% { background-position:0% 50%;   }
+}
 
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(0,33,71,.15);border-radius:3px}
-.custom-scrollbar::-webkit-scrollbar{width:4px}
+/* ── Admin sidebar — always navy, untouched ──────────────────────────────── */
+aside.bg-navy { background-color: var(--navy) !important; }
 
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar              { width:6px; height:6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(0,0,0,.2); border-radius:3px; }
+.dark ::-webkit-scrollbar-thumb  { background: rgba(255,255,255,.1); }
+.custom-scrollbar::-webkit-scrollbar { width:4px; }
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
 @keyframes slide-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 @keyframes fade-in  { from{opacity:0} to{opacity:1} }
 @keyframes spin     { to{transform:rotate(360deg)} }
-@keyframes bounce   { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-8px)} }
-.animate-slide-up{animation:slide-up .25s ease}
-.animate-fade-in{animation:fade-in .3s ease}
-.animate-spin{animation:spin .8s linear infinite}
-.animate-bounce{animation:bounce 1.5s ease-in-out infinite}
+@keyframes bounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.animate-slide-up { animation: slide-up .25s ease; }
+.animate-fade-in  { animation: fade-in .3s ease; }
+.animate-spin     { animation: spin .8s linear infinite; }
+.animate-bounce   { animation: bounce 1.5s ease-in-out infinite; }
 
-/* Logo — no background disc, just a soft glow behind the image itself */
-.logo-nav-wrap{width:2.75rem;height:2.75rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo-nav-wrap img{width:2.75rem;height:2.75rem;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,255,255,.35))}
-.logo-hero-wrap{width:9rem;height:9rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo-hero-wrap img{width:9rem;height:9rem;object-fit:contain;filter:drop-shadow(0 0 24px rgba(255,255,255,.35)) drop-shadow(0 0 60px rgba(255,255,255,.15))}
-@media(min-width:768px){.logo-hero-wrap{width:11rem;height:11rem}.logo-hero-wrap img{width:11rem;height:11rem}}
-.logo-footer-wrap{width:4rem;height:4rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo-footer-wrap img{width:4rem;height:4rem;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,255,255,.25))}
-
-.PhoneInputInput{background:#f8fafc;border:none;outline:none;padding:12px 16px;border-radius:12px;font-weight:700;color:var(--navy);font-size:.875rem;width:100%}
-.dark .PhoneInputInput{background:#334155;color:#f1f5f9}
-.PhoneInputCountrySelect{background:#f8fafc;border:none;border-radius:12px;padding:8px;font-weight:700;color:var(--navy);margin-right:6px}
-.dark .PhoneInputCountrySelect{background:#334155;color:#f1f5f9}
-
-@media print{.no-print{display:none!important}body{background:white;color:black}}
-/* ─── Accessibility: WCAG AA contrast fixes ───────────────────────────────
-   text-slate-400/300 are too light on white backgrounds (≈2.8:1 / 1.7:1),
-   failing the 4.5:1 ratio required for normal text. Boost them globally
-   to meet AA without touching every component.                          */
-.text-slate-400 { color: #475569 !important; }   /* was #94a3b8 → now slate-600, ~7:1 on white */
-.text-slate-300 { color: #64748b !important; }   /* was #cbd5e1 → now slate-500, ~4.6:1 on white */
-
-/* In dark mode, slate-600 text on near-black backgrounds is too dim */
-:where(.dark, .dark *) .dark\:text-slate-600 { color: #94a3b8 !important; } /* → slate-400, ~8:1 */
-
-/* Inputs/selects/textareas on bg-slate-50 are nearly invisible against
-   white cards — add a visible border so field boundaries are clear.    */
-input.bg-slate-50, textarea.bg-slate-50, select.bg-slate-50,
-.bg-slate-50 input, .bg-slate-50 textarea, .bg-slate-50 select {
-  border: 1px solid #e2e8f0;
+/* ── Logo ────────────────────────────────────────────────────────────────── */
+.logo-nav-wrap {
+  width:2.75rem; height:2.75rem;
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-:where(.dark, .dark *) input.bg-slate-700,
-:where(.dark, .dark *) textarea.bg-slate-700,
-:where(.dark, .dark *) select.bg-slate-700 {
-  border: 1px solid #475569;
+.logo-nav-wrap img {
+  width:2.75rem; height:2.75rem; object-fit:contain;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,.35));
+}
+.logo-hero-wrap {
+  width:9rem; height:9rem;
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.logo-hero-wrap img {
+  width:9rem; height:9rem; object-fit:contain;
+  filter: drop-shadow(0 0 24px rgba(255,255,255,.35)) drop-shadow(0 0 60px rgba(255,255,255,.15));
+}
+@media(min-width:768px){
+  .logo-hero-wrap     { width:11rem; height:11rem; }
+  .logo-hero-wrap img { width:11rem; height:11rem; }
+}
+.logo-footer-wrap {
+  width:4rem; height:4rem;
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.logo-footer-wrap img {
+  width:4rem; height:4rem; object-fit:contain;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,.25));
 }
 
-/* White cards on the light-mode page background (#f8fafc) need a subtle
-   border to stay distinguishable since the colors are very close.       */
-.bg-white.rounded-2xl, .bg-white.rounded-3xl {
-  border: 1px solid #f1f5f9;
+/* ── Phone input ─────────────────────────────────────────────────────────── */
+.PhoneInputInput {
+  background: var(--input-bg); border:1px solid var(--border);
+  border-radius:12px; padding:12px 16px;
+  font-weight:700; color:var(--text); font-size:.875rem; width:100%; outline:none;
+}
+.dark .PhoneInputInput { background:var(--input-bg); border-color:var(--border); color:var(--text); }
+.PhoneInputCountrySelect {
+  background:var(--input-bg); border:1px solid var(--border);
+  border-radius:12px; padding:8px; font-weight:700; color:var(--text); margin-right:6px;
+}
+
+@media print {
+  .no-print { display:none!important; }
+  body { background:white; color:black; }
 }
