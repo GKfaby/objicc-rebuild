@@ -8,64 +8,73 @@
   --navy:  #002147;
   --ocean: #005f87;
   --gold:  #c9a84c;
-  --darkbg:#0d1117;
 }
-
 @theme {
   --color-navy:   var(--navy);
   --color-ocean:  var(--ocean);
   --color-gold:   var(--gold);
-  --color-darkbg: var(--darkbg);
+  --color-darkbg: #000000;
 }
 
-/* ── Light mode palette (from taichi theme) ──────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE — seed #006daa (taichi) with elevation contrast fixes
+   Key principle: cards must be visibly LIGHTER than the bg so they lift off
+   ════════════════════════════════════════════════════════════════════════════ */
 :root {
-  --bg:            #b2b5af;   /* page background — warm grey-green        */
-  --card:          #a2a49f;   /* cards / panels                           */
-  --card2:         #959893;   /* secondary cards, nested panels           */
-  --text:          #020301;   /* primary text — near black                */
-  --text-muted:    #2a2c29;   /* secondary text — dark enough for AA      */
-  --text-on-color: #badcf9;   /* text on coloured surfaces                */
-  --primary:       #0f3855;   /* primary action colour                    */
-  --primary-fg:    #badcf9;   /* text on primary                          */
-  --accent:        #011fb1;   /* links / highlights                       */
-  --border:        #787a75;   /* borders and dividers                     */
-  --ring:          #0e4868;   /* focus rings                              */
-  --good:          #103f35;   /* success                                  */
-  --good-fg:       #bbe1d6;
-  --warn:          #713b0d;   /* warning                                  */
-  --warn-fg:       #ffcba9;
-  --bad:           #63130d;   /* error                                    */
-  --bad-fg:        #ffc4b8;
-  --input-bg:      #c0c3be;   /* slightly lighter than card for contrast  */
+  --bg:         #9B9E99;   /* page base — slightly darker grey-green       */
+  --card:       #D0D3CE;   /* cards — noticeably lighter, clearly elevated  */
+  --card2:      #C0C3BE;   /* nested panels / secondary surfaces            */
+  --input-bg:   #B8BBB6;   /* inputs — between card2 and bg                 */
+  --text:       #1A1B18;   /* near-black — max readability                  */
+  --text-muted: #373935;   /* secondary text — still very readable          */
+  --border:     #888A85;   /* borders — defined, not harsh                  */
+  --ring:       #2F608B;
+  --primary:    #004677;
+  --primary-fg: #B3DDFF;
+  --secondary:  #303799;
+  --accent:     #004C5F;
+  --good:       #005543;
+  --good-fg:    #AEE5D3;
+  --warn:       #783F03;
+  --warn-fg:    #FFCBA3;
+  --bad:        #7B057D;
+  --bad-fg:     #F8C3F6;
+
+  /* Card shadow — lifts card off the grey background */
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.10);
 }
 
-/* ── Dark mode palette ───────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   DARK MODE — near-black with clear elevation steps
+   ════════════════════════════════════════════════════════════════════════════ */
 .dark {
-  --bg:            #0d1117;
-  --card:          #161b22;
-  --card2:         #1e2530;
-  --text:          #e6edf3;
-  --text-muted:    #8b949e;
-  --text-on-color: #badcf9;
-  --primary:       #1f6feb;
-  --primary-fg:    #ffffff;
-  --accent:        #79c0ff;
-  --border:        #30363d;
-  --ring:          #1f6feb;
-  --good:          #196c2e;
-  --good-fg:       #aff5b4;
-  --warn:          #9e6a03;
-  --warn-fg:       #e3b341;
-  --bad:           #8e1519;
-  --bad-fg:        #ff7b72;
-  --input-bg:      #0d1117;
+  --bg:         #000000;
+  --card:       #1a1a1a;   /* clearly lighter than pure black               */
+  --card2:      #242424;   /* nested surfaces — another visible step up      */
+  --input-bg:   #0f0f0f;
+  --text:       #F3F6F0;
+  --text-muted: #DFE2DC;
+  --border:     #333333;   /* visible on dark card surfaces                  */
+  --ring:       #007DCA;
+  --primary:    #5FBAF4;
+  --primary-fg: #001D32;
+  --secondary:  #7185EA;
+  --accent:     #85DAEC;
+  --good:       #00BEA0;
+  --good-fg:    #00231A;
+  --warn:       #ECC096;
+  --warn-fg:    #2B1400;
+  --bad:        #E756E7;
+  --bad-fg:     #2F042F;
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.4);
 }
 
-/* ── Base ─────────────────────────────────────────────────────────────────── */
+/* ── Base reset ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-
 body {
   font-family: 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -73,92 +82,141 @@ body {
   color: var(--text);
 }
 
-/* ── Surface overrides — remap Tailwind colours to our palette ──────────── */
-/* Page backgrounds */
-:not(.dark) .bg-slate-50,
-:not(.dark) .min-h-screen:not(.hero-gradient):not([class*="from-navy"]):not([class*="bg-navy"]) {
-  background-color: var(--bg);
+/* ── Remap Tailwind surface classes ──────────────────────────────────────── */
+
+/* LIGHT */
+:not(.dark) .bg-white           { background-color: var(--card)   !important; }
+:not(.dark) .bg-slate-50        { background-color: var(--card)   !important; }
+:not(.dark) .bg-slate-100       { background-color: var(--card2)  !important; }
+:not(.dark) .bg-slate-200       { background-color: var(--input-bg) !important; }
+
+/* DARK */
+.dark .bg-white                 { background-color: var(--card)   !important; }
+.dark .bg-slate-50              { background-color: var(--card)   !important; }
+.dark .bg-slate-800             { background-color: var(--card)   !important; }
+.dark .bg-slate-700,
+.dark .dark\:bg-slate-700       { background-color: var(--card2)  !important; }
+.dark .bg-slate-900,
+.dark .dark\:bg-slate-900       { background-color: var(--bg)     !important; }
+.dark .bg-darkbg,
+.dark .dark\:bg-darkbg          { background-color: var(--bg)     !important; }
+
+/* ── Card elevation — shadows make cards read as lifted surfaces ─────────── */
+:not(.dark) .rounded-2xl,
+:not(.dark) .rounded-3xl {
+  box-shadow: var(--shadow-card);
+}
+:not(.dark) .rounded-xl:not(button):not(input):not(select):not(textarea):not(a) {
+  box-shadow: var(--shadow-sm);
+}
+.dark .rounded-2xl,
+.dark .rounded-3xl {
+  box-shadow: var(--shadow-card);
 }
 
-/* Cards and white panels */
-:not(.dark) .bg-white   { background-color: var(--card)  !important; }
-:not(.dark) .bg-slate-50 { background-color: var(--card)  !important; }
-:not(.dark) .bg-slate-100 { background-color: var(--card2) !important; }
-:not(.dark) .bg-slate-200 { background-color: #888b86    !important; }
-
-/* Dark mode card surfaces */
-.dark .bg-white    { background-color: var(--card)  !important; }
-.dark .bg-slate-50 { background-color: var(--card)  !important; }
-.dark .bg-slate-800 { background-color: var(--card) !important; }
-.dark .bg-slate-700 { background-color: var(--card2) !important; }
-.dark .bg-slate-900 { background-color: var(--bg)   !important; }
-
-/* Input fields */
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
 :not(.dark) input,
 :not(.dark) textarea,
 :not(.dark) select {
   background-color: var(--input-bg) !important;
-  border-color: var(--border) !important;
+  border: 1.5px solid var(--border) !important;
   color: var(--text) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.10) !important;
 }
 :not(.dark) input::placeholder,
-:not(.dark) textarea::placeholder { color: #5a5d58 !important; }
+:not(.dark) textarea::placeholder { color: #555750 !important; }
 
 .dark input,
 .dark textarea,
 .dark select {
   background-color: var(--input-bg) !important;
-  border-color: var(--border) !important;
+  border: 1.5px solid var(--border) !important;
   color: var(--text) !important;
 }
+.dark input::placeholder,
+.dark textarea::placeholder { color: var(--text-muted) !important; }
 
-/* Text colours */
-:not(.dark) .text-navy { color: var(--navy) !important; }
-:not(.dark) .text-slate-500,
-:not(.dark) .text-slate-400 { color: var(--text-muted) !important; }
-:not(.dark) .text-slate-300 { color: #3a3d38 !important; }
-:not(.dark) .text-slate-600 { color: #1a1c18 !important; }
+/* ── Text ────────────────────────────────────────────────────────────────── */
+:not(.dark) .text-slate-400,
+:not(.dark) .text-slate-300,
+:not(.dark) .text-slate-500  { color: var(--text-muted) !important; }
+:not(.dark) .text-slate-600  { color: var(--text)       !important; }
+:not(.dark) .text-navy       { color: var(--primary)    !important; }
+:not(.dark) .dark\:text-white { color: var(--text)      !important; }
 
-/* Borders */
-:not(.dark) .border-slate-100 { border-color: var(--border) !important; }
+.dark .text-slate-400,
+.dark .text-slate-300        { color: var(--text-muted) !important; }
+.dark .text-white,
+.dark .dark\:text-white      { color: var(--text)       !important; }
+
+/* ── Borders ─────────────────────────────────────────────────────────────── */
+:not(.dark) .border-slate-50,
+:not(.dark) .border-slate-100,
 :not(.dark) .border-slate-200 { border-color: var(--border) !important; }
-:not(.dark) .border-slate-50  { border-color: #8a8d88     !important; }
+
+.dark .border-slate-700,
+.dark .border-slate-800,
 .dark .border-slate-100,
-.dark .border-slate-700 { border-color: var(--border) !important; }
+.dark .dark\:border-slate-700 { border-color: var(--border) !important; }
 
-/* Focus rings */
-:not(.dark) *:focus-visible { outline-color: var(--ring); }
-.dark *:focus-visible { outline-color: var(--ring); }
+/* ── Status colours ──────────────────────────────────────────────────────── */
+/* Light */
+:not(.dark) .bg-green-500,
+:not(.dark) .bg-green-600     { background-color: var(--good) !important; color: var(--good-fg) !important; }
+:not(.dark) .text-green-500,
+:not(.dark) .text-green-600,
+:not(.dark) .text-green-700   { color: var(--good) !important; }
+:not(.dark) .bg-green-50      { background-color: #b8d0c8 !important; }
+:not(.dark) .bg-green-100     { background-color: #b0c8c0 !important; }
 
-/* Status colours in light mode */
-:not(.dark) .bg-green-50  { background-color: #c8ddd8 !important; }
-:not(.dark) .text-green-700 { color: var(--good) !important; }
-:not(.dark) .bg-amber-50  { background-color: #d4c4a8 !important; }
-:not(.dark) .text-amber-700 { color: var(--warn) !important; }
-:not(.dark) .bg-red-50    { background-color: #d4b8b4 !important; }
-:not(.dark) .text-red-700  { color: var(--bad) !important; }
-:not(.dark) .bg-red-100   { background-color: #c8a8a4 !important; }
+:not(.dark) .bg-amber-500,
+:not(.dark) .bg-amber-400     { background-color: var(--gold) !important; }
+:not(.dark) .text-amber-600,
+:not(.dark) .text-amber-700   { color: var(--warn) !important; }
+:not(.dark) .bg-amber-50      { background-color: #c8b89c !important; }
+:not(.dark) .bg-amber-100     { background-color: #c0b094 !important; }
 
-/* ── Hero (always dark, untouched) ───────────────────────────────────────── */
+:not(.dark) .text-red-400,
+:not(.dark) .text-red-500,
+:not(.dark) .text-red-600,
+:not(.dark) .text-red-700     { color: var(--bad) !important; }
+:not(.dark) .bg-red-50        { background-color: #c4aec8 !important; }
+:not(.dark) .bg-red-100       { background-color: #bca8c0 !important; }
+
+/* Dark */
+.dark .bg-green-500           { background-color: var(--good) !important; }
+.dark .text-green-400,
+.dark .dark\:text-green-400   { color: var(--good) !important; }
+.dark .bg-amber-500           { background-color: var(--gold) !important; }
+.dark .text-amber-400,
+.dark .dark\:text-amber-400   { color: var(--warn) !important; }
+.dark .text-red-400           { color: var(--bad)  !important; }
+
+/* ── Gold stays gold always ──────────────────────────────────────────────── */
+.bg-gold, .text-gold { }   /* Tailwind handles via @theme, untouched */
+
+/* ── Navy bg elements stay navy in both modes ────────────────────────────── */
+.bg-navy, [class*="from-navy"], [class*="via-navy"] {
+  /* Let Tailwind handle these — they reference the @theme navy colour */
+}
+
+/* ── Hero — always dark, never touched by mode ───────────────────────────── */
 .hero-gradient {
   background: linear-gradient(135deg,#001830 0%,#002147 25%,#003166 50%,#002147 75%,#001830 100%);
   background-size:400% 400%;
   animation: gradient-shift 12s ease infinite;
 }
 @keyframes gradient-shift {
-  0%   { background-position:0% 50%;   }
-  50%  { background-position:100% 50%; }
-  100% { background-position:0% 50%;   }
+  0%   { background-position: 0% 50%;   }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%;   }
 }
-
-/* ── Admin sidebar — always navy, untouched ──────────────────────────────── */
-aside.bg-navy { background-color: var(--navy) !important; }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar              { width:6px; height:6px; }
 ::-webkit-scrollbar-track        { background: transparent; }
-::-webkit-scrollbar-thumb        { background: rgba(0,0,0,.2); border-radius:3px; }
-.dark ::-webkit-scrollbar-thumb  { background: rgba(255,255,255,.1); }
+::-webkit-scrollbar-thumb        { background: rgba(0,0,0,.25); border-radius:3px; }
+.dark ::-webkit-scrollbar-thumb  { background: rgba(255,255,255,.12); }
 .custom-scrollbar::-webkit-scrollbar { width:4px; }
 
 /* ── Animations ──────────────────────────────────────────────────────────── */
@@ -203,13 +261,13 @@ aside.bg-navy { background-color: var(--navy) !important; }
 
 /* ── Phone input ─────────────────────────────────────────────────────────── */
 .PhoneInputInput {
-  background: var(--input-bg); border:1px solid var(--border);
+  background: var(--input-bg); border:1.5px solid var(--border);
   border-radius:12px; padding:12px 16px;
   font-weight:700; color:var(--text); font-size:.875rem; width:100%; outline:none;
 }
 .dark .PhoneInputInput { background:var(--input-bg); border-color:var(--border); color:var(--text); }
 .PhoneInputCountrySelect {
-  background:var(--input-bg); border:1px solid var(--border);
+  background:var(--input-bg); border:1.5px solid var(--border);
   border-radius:12px; padding:8px; font-weight:700; color:var(--text); margin-right:6px;
 }
 
