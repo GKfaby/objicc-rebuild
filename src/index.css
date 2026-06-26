@@ -146,8 +146,7 @@ body {
 
 .dark .text-slate-400,
 .dark .text-slate-300        { color: var(--text-muted) !important; }
-.dark .text-white,
-.dark .dark\:text-white      { color: var(--text)       !important; }
+/* text-white intentionally NOT overridden — needed for text on navy/dark buttons */
 
 /* ── Borders ─────────────────────────────────────────────────────────────── */
 :not(.dark) .border-slate-50,
@@ -275,3 +274,16 @@ body {
   .no-print { display:none!important; }
   body { background:white; color:black; }
 }
+/* ── Ensure text on explicit navy/gold backgrounds stays readable ─────────── */
+/* Text inside navy backgrounds must stay white regardless of mode */
+.bg-navy .text-white,
+[class*="bg-navy"] .text-white { color: #ffffff !important; }
+
+/* Login button: text-navy on gold must stay dark navy */
+.bg-gold.text-navy, .bg-gold .text-navy { color: #002147 !important; }
+
+/* Keep white text white inside coloured buttons/badges */
+.bg-green-500 .text-white,
+.bg-green-600 .text-white,
+.bg-red-500 .text-white,
+.bg-amber-500 .text-white { color: #ffffff !important; }
