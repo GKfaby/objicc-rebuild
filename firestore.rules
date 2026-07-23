@@ -12,17 +12,18 @@ service cloud.firestore {
     function isStaff() {
       return myRole() in ['super_admin','admin','staff','recruitment_officer','editor'];
     }
-    function isAdmin() {
-      return myRole() in ['super_admin','admin'];
-    }
-    function isSuperAdmin() {
-      return myRole() == 'super_admin';
+    function isAdmin() { return myRole() in ['super_admin','admin']; }
+    function isSuperAdmin() { return myRole() == 'super_admin'; }
+    function hasPermission(perm) {
+      let roleDoc = get(/databases/$(database)/documents/roles/$(myRole()));
+      return roleDoc.exists && roleDoc.data.permissions[perm] == true;
     }
 
     // Users
     match /users/{uid} {
       allow read: if isOwner(uid) || isStaff() ||
-        (isSignedIn() && resource.data.role in ['super_admin','admin','staff','recruitment_officer','editor']);
+        (isSignedIn() && resource.data.role in
+          ['super_admin','admin','staff','recruitment_officer','editor']);
       allow create: if isOwner(uid);
       allow update: if isOwner(uid) || isStaff();
       allow delete: if isAdmin();
@@ -33,26 +34,26 @@ service cloud.firestore {
       }
     }
 
-    // Roles & permissions
+    // Roles
     match /roles/{roleId} {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
 
-    // System config (first-user flag)
+    // System config
     match /system/{docId} {
       allow read: if true;
       allow create: if isSignedIn();
       allow update, delete: if isSuperAdmin();
     }
 
-    // Posts (notices & events)
+    // Posts
     match /posts/{postId} {
       allow read: if true;
       allow write: if isStaff();
     }
 
-    // Applications (enrollment)
+    // Applications
     match /applications/{appId} {
       allow read: if isStaff();
       allow create: if true;
@@ -66,10 +67,14 @@ service cloud.firestore {
     }
 
     // Merch requests / orders
+    // All staff can read, create, update status fields
+    // Only manageOrders permission can hard-delete (empty trash)
     match /merch_requests/{reqId} {
-      allow read: if isStaff() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+      allow read: if isStaff() ||
+        (isSignedIn() && resource.data.userUid == request.auth.uid);
       allow create: if isSignedIn();
-      allow update, delete: if isStaff();
+      allow update: if isStaff();
+      allow delete: if isSignedIn() && hasPermission('manageOrders');
     }
 
     // Suggestions
@@ -92,12 +97,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Secure settings (payment keys etc.)
+    // Secure settings
     match /secure_settings/{docId} {
       allow read, write: if isSuperAdmin();
     }
 
-    // Conversations (member <-> admin messaging)
+    // Conversations
     match /conversations/{convId} {
       allow read, update: if isSignedIn() &&
         (request.auth.uid in resource.data.participants || isStaff());
@@ -106,19 +111,23 @@ service cloud.firestore {
 
       match /messages/{msgId} {
         allow read: if isSignedIn() &&
-          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || isStaff());
+          (request.auth.uid in
+            get(/databases/$(database)/documents/conversations/$(convId)).data.participants
+            || isStaff());
         allow create: if isSignedIn() &&
-          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants || isStaff());
+          (request.auth.uid in
+            get(/databases/$(database)/documents/conversations/$(convId)).data.participants
+            || isStaff());
         allow update: if isSignedIn();
         allow delete: if isAdmin();
       }
     }
 
-    // Broadcasts (admin -> roles)
+    // Broadcasts
     match /broadcasts/{bcastId} {
       allow read: if isSignedIn();
       allow create: if isStaff();
-      allow update: if isSignedIn(); // allow readBy array updates
+      allow update: if isSignedIn();
       allow delete: if isAdmin();
     }
   }
