@@ -287,3 +287,108 @@ body {
 .bg-green-600 .text-white,
 .bg-red-500 .text-white,
 .bg-amber-500 .text-white { color: #ffffff !important; }
+
+/* ── THEMES ──────────────────────────────────────────────────────────────── */
+/* Summer (Tropical Reef) */
+html[data-theme="summer"] {
+  --navy:  #001a40;
+  --ocean: #00769e;
+  --gold:  #ff7a59;
+  --bg:    #dbebea;
+  --card:  #ffffff;
+  --card2: #e8f4f4;
+  --input-bg:#cce0df;
+  --border:  #b4d4d4;
+  --primary: #006b8f;
+  --secondary: #ff7a59;
+  --accent: #00b4d8; 
+}
+html.dark[data-theme="summer"] {
+  --bg:    #000c14;
+  --card:  #001524;
+  --card2: #002236;
+  --input-bg: #000c14;
+  --border: #003652;
+  --gold:  #ff9f87;
+  --primary: #00b4d8;
+  --secondary: #ff7a59;
+  --accent: #00f0ff;
+}
+
+/* Autumn (Kelp Forest) */
+html[data-theme="autumn"] {
+  --navy:  #2f1b12;
+  --ocean: #4c5d41;
+  --gold:  #cc5803;
+  --bg:    #e8ddd1;
+  --card:  #ffffff;
+  --card2: #f4e9de;
+  --input-bg:#dacdbe;
+  --border:  #ccbbae;
+  --primary: #5c6e4e;
+  --secondary: #cc5803;
+  --accent: #e2711d;
+}
+html.dark[data-theme="autumn"] {
+  --bg:    #120f0e;
+  --card:  #1f1816;
+  --card2: #2b211d;
+  --input-bg: #120f0e;
+  --border: #3b2f2b;
+  --gold:  #ff9e42;
+  --primary: #8da476;
+  --secondary: #cc5803;
+  --accent: #ffb770;
+}
+
+/* Winter (Arctic Ocean) */
+html[data-theme="winter"] {
+  --navy:  #08101a;
+  --ocean: #46637f;
+  --gold:  #6d9ba6;
+  --bg:    #e0e8ef;
+  --card:  #ffffff;
+  --card2: #ecf1f6;
+  --input-bg:#d4dee7;
+  --border:  #b9cadd;
+  --primary: #2d4a66;
+  --secondary: #61879c;
+  --accent: #8ebdc7;
+}
+html.dark[data-theme="winter"] {
+  --bg:    #020509;
+  --card:  #0a111a;
+  --card2: #101c2b;
+  --input-bg: #020509;
+  --border: #1a2a3e;
+  --gold:  #9edcf5;
+  --primary: #6c9fce;
+  --secondary: #61879c;
+  --accent: #bbedff;
+}
+
+/* Spring (Shallow Waters) */
+html[data-theme="spring"] {
+  --navy:  #032626;
+  --ocean: #15b097;
+  --gold:  #4caf50;
+  --bg:    #dceddf;
+  --card:  #ffffff;
+  --card2: #eaf6ec;
+  --input-bg:#cce2d0;
+  --border:  #a6d1ad;
+  --primary: #0ca481;
+  --secondary: #2dc653;
+  --accent: #4ade80;
+}
+html.dark[data-theme="spring"] {
+  --bg:    #010f0f;
+  --card:  #021c1c;
+  --card2: #032a2a;
+  --input-bg: #010f0f;
+  --border: #054040;
+  --gold:  #adedb3;
+  --primary: #29e8b6;
+  --secondary: #2dc653;
+  --accent: #4ade80;
+}

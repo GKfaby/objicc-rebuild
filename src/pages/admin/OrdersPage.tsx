@@ -32,9 +32,13 @@ export default function OrdersPage(){
 
   // Active orders
   useEffect(()=>{
-    const q=query(collection(db,'merch_requests'),where('deleted','!=',true),orderBy('deleted'),orderBy('createdAt','desc'));
+    const q=query(collection(db,'merch_requests'),orderBy('createdAt','desc'));
     return onSnapshot(q,snap=>{
-      setOrders(snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest)).filter(o=>!o.deleted));
+      const all=snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest));
+      setOrders(all.filter(o=>!o.deleted));
+      setLoading(false);
+    }, err => {
+      console.error("Error fetching orders:", err);
       setLoading(false);
     });
   },[]);
@@ -42,8 +46,13 @@ export default function OrdersPage(){
   // Trash (soft-deleted)
   useEffect(()=>{
     if(!canManage)return;
-    const q=query(collection(db,'merch_requests'),where('deleted','==',true),orderBy('deletedAt','desc'));
-    return onSnapshot(q,snap=>{setTrash(snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest)));});
+    const q=query(collection(db,'merch_requests'),orderBy('createdAt','desc'));
+    return onSnapshot(q,snap=>{
+      const all=snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest));
+      setTrash(all.filter(o=>o.deleted).sort((a,b)=>((b as any).deletedAt?.toMillis?.()||0)-((a as any).deletedAt?.toMillis?.()||0)));
+    }, err => {
+      console.error("Error fetching trash:", err);
+    });
   },[canManage]);
 
   const upd=async(id:string,u:Partial<MerchRequest>)=>{
@@ -190,9 +199,18 @@ export default function OrdersPage(){
                   <td className="px-4 py-3 font-black text-navy dark:text-white text-sm">{o.totalPrice}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{(o as any).deletedAt?.toDate?.().toLocaleDateString()||'—'}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={()=>restoreFromTrash(o)} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl text-xs font-black uppercase tracking-widest ml-auto">
-                      <RefreshCw className="w-3 h-3"/>Restore
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={()=>restoreFromTrash(o)} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl text-xs font-black uppercase tracking-widest">
+                        <RefreshCw className="w-3 h-3"/>Restore
+                      </button>
+                      <button onClick={async()=>{
+                        if(!window.confirm('Permanently delete this order? This cannot be undone.'))return;
+                        await import('firebase/firestore').then(({deleteDoc})=>deleteDoc(doc(db,'merch_requests',o.id)));
+                        showToast('Order permanently deleted','info');
+                      }} className="flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-xs font-black uppercase tracking-widest">
+                        <Trash2 className="w-3 h-3"/>Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}</tbody>

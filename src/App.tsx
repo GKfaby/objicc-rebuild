@@ -103,7 +103,7 @@ function GuestRedirect(){
 
 export default function App(){
   return(<BrowserRouter>
-    <ThemeProvider><UserProvider><ToastProvider>
+    <UserProvider><ThemeProvider><ToastProvider>
       <SessionManager/>
       <MaintenanceGate>
         <Routes>
@@ -141,6 +141,6 @@ export default function App(){
           <Route path="*" element={<NotFoundPage/>}/>
         </Routes>
       </MaintenanceGate>
-    </ToastProvider></UserProvider></ThemeProvider>
+    </ToastProvider></ThemeProvider></UserProvider>
   </BrowserRouter>);
 }

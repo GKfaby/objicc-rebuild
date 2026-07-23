@@ -50,12 +50,16 @@ export default function RolesPage(){
       const d:Record<string,any>={};
       snap.docs.forEach(dc=>d[dc.id]={id:dc.id,...dc.data()});
       for(const{id}of SR){
-        if(!d[id])await setDoc(doc(db,'roles',id),{
-          name:ROLE_LABELS[id],
-          description:SR.find(r=>r.id===id)?.desc||'',
-          permissions:DEFAULT_PERMISSIONS[id]||{},
-          isSystem:true,createdAt:serverTimestamp(),
-        });
+        if(!d[id]){
+          await setDoc(doc(db,'roles',id),{
+            name:ROLE_LABELS[id],
+            description:SR.find(r=>r.id===id)?.desc||'',
+            permissions:DEFAULT_PERMISSIONS[id]||{},
+            isSystem:true,createdAt:serverTimestamp(),
+          });
+        }else if(id==='super_admin'){
+          await setDoc(doc(db,'roles',id),{permissions:DEFAULT_PERMISSIONS[id]},{merge:true});
+        }
       }
       setData(d);setLoading(false);
     });

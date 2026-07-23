@@ -1,8 +1,8 @@
 import{useState} from 'react';
 import{User,Edit2,Save,X,School,Phone,Shield,Clock,LogOut} from 'lucide-react';
 import{doc,updateDoc,serverTimestamp} from 'firebase/firestore';
-import{signOut} from 'firebase/auth';
-import{auth,db} from '../firebase';
+import{signOut,sendPasswordResetEmail,linkWithPopup} from 'firebase/auth';
+import{auth,db,googleProvider} from '../firebase';
 import{useUser} from '../contexts/UserContext';
 import{useToast} from '../contexts/ToastContext';
 import{ROLE_LABELS} from '../types';

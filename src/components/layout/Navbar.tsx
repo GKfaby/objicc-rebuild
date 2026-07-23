@@ -1,6 +1,6 @@
 import{useState,useEffect} from 'react';
 import{Link,useLocation,useNavigate} from 'react-router-dom';
-import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell} from 'lucide-react';
+import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell,Type} from 'lucide-react';
 import{auth,db} from '../../firebase';
 import{signOut} from 'firebase/auth';
 import{collection,query,where,onSnapshot} from 'firebase/firestore';
@@ -9,15 +9,16 @@ import{useTheme} from '../../contexts/ThemeContext';
 export default function Navbar(){
   const[scrolled,setScrolled]=useState(false);
   const[mobileOpen,setMobileOpen]=useState(false);
+  const[fontMenuOpen,setFontMenuOpen]=useState(false);
   const[logoError,setLogoError]=useState(false);
   const[unreadCount,setUnreadCount]=useState(0);
   const{firebaseUser,profile,isStaff,isMember,isPending,systemSettings}=useUser();
-  const{isDark,setColorMode}=useTheme();
+  const{isDark,setColorMode,fontSize,setFontSize}=useTheme();
   const location=useLocation();
   const navigate=useNavigate();
   const isHome=location.pathname==='/';
   useEffect(()=>{const h=()=>setScrolled(window.scrollY>60);window.addEventListener('scroll',h,{passive:true});return()=>window.removeEventListener('scroll',h);},[]);
-  useEffect(()=>setMobileOpen(false),[location]);
+  useEffect(()=>{setMobileOpen(false);setFontMenuOpen(false);},[location]);
   useEffect(()=>setLogoError(false),[systemSettings.logoUrl]);
   // Notification badge count
   useEffect(()=>{
@@ -63,6 +64,20 @@ export default function Navbar(){
             </Link>
           ))}
           <div className="flex items-center gap-2 pl-4 border-l border-white/10">
+            <div className="relative">
+              <button onClick={()=>setFontMenuOpen(!fontMenuOpen)} className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                <Type className="w-4 h-4"/>
+              </button>
+              {fontMenuOpen&&(
+                <div className="absolute top-full right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-2 w-32 animate-slide-up">
+                  {(['sm','md','lg','xl'] as const).map(s=>(
+                    <button key={s} onClick={()=>{setFontSize(s);setFontMenuOpen(false);}} className={`w-full text-left px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors ${fontSize===s?'bg-navy/5 dark:bg-gold/10 text-navy dark:text-gold':'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                      {s==='sm'?'Small':s==='md'?'Medium':s==='lg'?'Large':'X-Large'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button onClick={()=>setColorMode(isDark?'light':'dark')} className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all">
               {isDark?<Sun className="w-4 h-4"/>:<Moon className="w-4 h-4"/>}
             </button>

@@ -50,22 +50,7 @@ export default function SessionManager(){
     }, IDLE_WARNING_MINS*60*1000);
   };
 
-  // Sign out when tab/browser closes (sessionStorage trick)
-  useEffect(()=>{
-    if(!firebaseUser)return;
-    // On load: if no sessionActive flag, sign out (new tab/browser open)
-    // We use sessionStorage which clears when the tab closes
-    const isActive=sessionStorage.getItem('sessionActive');
-    if(!isActive){
-      // First load in this tab — mark it active
-      sessionStorage.setItem('sessionActive','1');
-    }
-    // When tab closes: sessionStorage clears automatically
-    // But we also set a beforeunload handler to sign out
-    const handleUnload=()=>{signOut(auth);};
-    window.addEventListener('beforeunload',handleUnload);
-    return()=>window.removeEventListener('beforeunload',handleUnload);
-  },[firebaseUser]);
+
 
   // Idle timer — reset on any user activity
   useEffect(()=>{

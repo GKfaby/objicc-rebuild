@@ -13,7 +13,7 @@ interface UserContextType{
   schools:string[];systemSettings:SystemSettings;needsProfileCompletion:boolean;
 }
 const Ctx=createContext<UserContextType|undefined>(undefined);
-const NONE:RolePermissions={manageRoles:false,manageUsers:false,canViewUserUpdates:false,managePosts:false,manageMerchandise:false,manageRequests:false,manageApplications:false,printPermissionSlips:false,viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false};
+const NONE:RolePermissions={manageRoles:false,manageUsers:false,canViewUserUpdates:false,managePosts:false,manageMerchandise:false,manageRequests:false,manageOrders:false,manageApplications:false,printPermissionSlips:false,viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false};
 
 export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const[firebaseUser,setFU]=useState<any>(null);
@@ -48,6 +48,7 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   },[]);
 
   const resolvePerms=async(role:Role):Promise<RolePermissions>=>{
+    if(role==='super_admin')return DEFAULT_PERMISSIONS.super_admin;
     try{const s=await getDoc(doc(db,'roles',role));if(s.exists())return s.data().permissions;}catch(_){}
     return DEFAULT_PERMISSIONS[role]??NONE;
   };

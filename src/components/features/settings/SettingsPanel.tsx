@@ -1,4 +1,4 @@
-import{useState} from 'react';
+import{useState,useEffect} from 'react';
 import{Sun,Moon,Monitor,Type,Palette,Save,Globe,Phone,MapPin,AlertTriangle,Check,BarChart2} from 'lucide-react';
 import{doc,setDoc} from 'firebase/firestore';
 import{db} from '../../../firebase';
@@ -9,12 +9,17 @@ import type{SystemSettings,AppTheme,ColorMode,FontSize} from '../../../types';
 const TABS=['Appearance','Branding','Accessibility','Features','Deployment'] as const;
 export default function SettingsPanel(){
   const{systemSettings,permissions}=useUser();
-  const{colorMode,setColorMode,fontSize,setFontSize,appTheme,setAppTheme}=useTheme();
+  const{colorMode,setColorMode,fontSize,setFontSize}=useTheme();
   const{showToast}=useToast();
   const[tab,setTab]=useState<typeof TABS[number]>('Appearance');
   const[settings,setSettings]=useState<SystemSettings>(systemSettings);
   const[saving,setSaving]=useState(false);
   const updateSetting=(k:keyof SystemSettings,v:any)=>setSettings(p=>({...p,[k]:v}));
+  
+  useEffect(()=>{
+    return ()=>{document.documentElement.setAttribute('data-theme',systemSettings?.appTheme||'default');}
+  },[systemSettings]);
+
   const save=async()=>{setSaving(true);try{await setDoc(doc(db,'settings','global'),settings,{merge:true});showToast('Settings saved!','success');}catch{showToast('Failed to save.','error');}finally{setSaving(false);}};
   if(!permissions.manageSettings)return<div className="text-center py-20 text-slate-400">You do not have permission to view this page.</div>;
   return(<div className="space-y-6 max-w-3xl">
@@ -26,8 +31,8 @@ export default function SettingsPanel(){
         <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Color Mode</label>
           <div className="grid grid-cols-3 gap-2">{[{v:'light',icon:Sun,l:'Light'},{v:'dark',icon:Moon,l:'Dark'},{v:'system',icon:Monitor,l:'System'}].map(({v,icon:Icon,l})=><button key={v} onClick={()=>setColorMode(v as ColorMode)} className={`flex flex-col items-center gap-2 py-4 rounded-xl border-2 transition-all ${colorMode===v?'border-navy bg-navy/5 dark:border-gold':'border-slate-100 dark:border-slate-700'}`}><Icon className="w-5 h-5"/><span className="text-xs font-black uppercase">{l}</span></button>)}</div>
         </div>
-        <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">App Theme</label>
-          <div className="grid grid-cols-5 gap-2">{(['default','midnight','forest','sunset','ocean'] as AppTheme[]).map(t=><button key={t} onClick={()=>setAppTheme(t)} className={`py-3 rounded-xl border-2 text-xs font-black uppercase capitalize transition-all ${appTheme===t?'border-navy bg-navy/5 dark:border-gold':'border-slate-100 dark:border-slate-700'}`}>{t}</button>)}</div>
+        <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">App Theme (Global)</label>
+          <div className="grid grid-cols-5 gap-2">{(['default','summer','autumn','winter','spring'] as AppTheme[]).map(t=><button key={t} onClick={()=>{updateSetting('appTheme',t);document.documentElement.setAttribute('data-theme',t);}} className={`py-3 rounded-xl border-2 text-xs font-black uppercase capitalize transition-all ${settings.appTheme===t?'border-navy bg-navy/5 dark:border-gold':'border-slate-100 dark:border-slate-700'}`}>{t}</button>)}</div>
         </div>
       </>}
 

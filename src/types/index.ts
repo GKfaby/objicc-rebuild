@@ -39,7 +39,7 @@ export const DEFAULT_PERMISSIONS: Record<string,RolePermissions> = {
 };
 
 export interface HeroStat { label:string; desc:string; }
-export type AppTheme = 'default'|'midnight'|'forest'|'sunset'|'ocean';
+export type AppTheme = 'default'|'summer'|'autumn'|'winter'|'spring';
 export type ColorMode = 'light'|'dark'|'system';
 export type A11yMode = 'normal'|'deuteranopia'|'protanopia'|'tritanopia'|'high-contrast';
 export type FontSize = 'sm'|'md'|'lg'|'xl';
