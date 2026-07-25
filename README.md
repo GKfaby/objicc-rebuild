@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛠️ Obijcc-Rebuild
+# 🛠️ Objicc-Rebuild
 
 > *A modern utility and reconstruction tool designed for Objective-C and related workflows.*
 
@@ -68,7 +68,7 @@ objicc-rebuild/
 └── README.md      # Project documentation
 ```
 🤝 Contributing
-Contributions are always welcome! If you'd like to improve ObjC-Rebuild, please follow these steps:
+Contributions are always welcome! If you'd like to improve Objicc-Rebuild, please follow these steps:
 
 Fork the Project
 
