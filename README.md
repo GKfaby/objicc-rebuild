@@ -1,4 +1,3 @@
-```markdown
 <div align="center">
 
 # 🛠️ ObjC-Rebuild
@@ -26,7 +25,7 @@
 - **Lightweight & Modular:** Easily integrated into existing development pipelines.
 - **Cross-Platform Support:** Built to work cleanly across supported host systems.
 - **Extensible:** Simple structure allowing developers to add custom scripts or extensions.
-```
+---
 
 ## 🚀 Getting Started
 
