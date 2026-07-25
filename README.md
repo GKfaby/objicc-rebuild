@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛠️ ObjC-Rebuild
+# 🛠️ Obijcc-Rebuild
 
 > *A modern utility and reconstruction tool designed for Objective-C and related workflows.*
 
