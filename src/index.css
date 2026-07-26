@@ -404,3 +404,31 @@ html.dark[data-theme="spring"] {
   --secondary: #2dc653;
   --accent: #4ade80;
 }
+
+/* ── Edge/IE native password reveal & clear icons ──────────────────────────
+   Edge (and legacy IE) inject their own "reveal password" eye icon and a
+   clear (x) button inside password/text inputs. These sit in the same
+   corner as our custom Eye/EyeOff toggle buttons and visually clash with
+   (or hide) them. Disable the native ones so only our custom toggle shows. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* ── Browser autofill background override ──────────────────────────────────
+   Chrome/Edge force their own background color onto fields they recognize
+   as a saved login (usually a pale yellow/white), ignoring your CSS
+   background-color entirely. Browsers do still respect box-shadow, so we
+   paint over the forced color with an inset shadow matching our own card
+   background, and use a very long transition to stop the color from
+   flashing before our shadow applies. -webkit-text-fill-color overrides
+   the autofill text color the same way. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  box-shadow: 0 0 0 1000px var(--card) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
