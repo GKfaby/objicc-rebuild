@@ -1,12 +1,13 @@
 import{useState} from 'react';
 import{User,Edit2,Save,X,School,Phone,Shield,Clock,LogOut} from 'lucide-react';
 import{doc,updateDoc,serverTimestamp} from 'firebase/firestore';
-import{signOut,sendPasswordResetEmail,linkWithPopup} from 'firebase/auth';
-import{auth,db,googleProvider} from '../firebase';
+import{signOut} from 'firebase/auth';
+import{auth,db} from '../firebase';
 import{useUser} from '../contexts/UserContext';
 import{useToast} from '../contexts/ToastContext';
 import{ROLE_LABELS} from '../types';
 import{useNavigate} from 'react-router-dom';
+import ChangePasswordCard from '../components/features/ChangePasswordCard';
 export default function ProfilePage(){
   const{profile,refreshProfile,schools}=useUser();
   const{showToast}=useToast();
@@ -97,6 +98,8 @@ export default function ProfilePage(){
         </div>}
         <div className="pt-2 flex items-center gap-2 text-xs text-slate-400"><Clock className="w-3 h-3"/>Member since {profile.createdAt?.toDate?.().toLocaleDateString()||'recently'}</div>
       </div>
+
+      <ChangePasswordCard/>
 
       <button onClick={handleSignOut} disabled={signingOut}
         className="w-full flex items-center justify-center gap-3 py-4 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 font-black rounded-2xl shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm uppercase tracking-widest border border-slate-100 dark:border-slate-700 disabled:opacity-60">

@@ -8,6 +8,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import AdminLayout from './components/layout/AdminLayout';
 import AuthForm from './components/auth/AuthForm';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SessionManager from './components/SessionManager';
 import{useUser} from './contexts/UserContext';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
@@ -109,6 +110,7 @@ export default function App(){
         <Routes>
           <Route path="/login" element={<GuestRedirect/>}/>
           <Route path="/signup" element={<GuestRedirect/>}/>
+          <Route path="/forgot-password" element={<RouteGuard guestOnly><ForgotPasswordPage/></RouteGuard>}/>
           <Route path="/complete-profile" element={<RouteGuard guestOnly={false}><AuthForm initialMode="complete-profile"/></RouteGuard>}/>
 
           <Route path="/" element={<PublicLayout><HomePage/></PublicLayout>}/>

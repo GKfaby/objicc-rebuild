@@ -24,7 +24,7 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
   const navigate=useNavigate();
   const location=useLocation();
   const from=(location.state as any)?.from?.pathname||'/';
-  useEffect(()=>{setMode(initialMode);setError('');},[initialMode]);
+  useEffect(()=>{setMode(initialMode);setError('');setForm(EF);setShowPass(false);},[initialMode]);
   useEffect(()=>{if(mode==='complete-profile'&&auth.currentUser){const u=auth.currentUser;const parts=(u.displayName||'').trim().split(/\s+/);setForm(p=>({...p,email:u.email||p.email,firstName:p.firstName||parts[0]||'',lastName:p.lastName||parts.slice(1).join(' ')||''}));}},[mode]);
   const set=(k:string,v:string)=>setForm(p=>({...p,[k]:v}));
   const validatePw=(pw:string,c:string)=>{if(pw.length<8)throw new Error('Password must be at least 8 characters.');if(!/[A-Z]/.test(pw))throw new Error('Password must contain at least one uppercase letter.');if(!/[!@#$%^&*(),.?":{}|<>]/.test(pw))throw new Error('Password must contain at least one symbol.');if(pw!==c)throw new Error('Passwords do not match.');};
@@ -52,7 +52,7 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
       await batch.commit();
       await setDoc(doc(collection(db,'users',uid,'notifications')),{title:isFirst?'Welcome, Super Admin!':'Registration Complete',message:isFirst?'Full Super Admin access granted.':`Your account is pending approval as ${ROLE_LABELS[userData.role]}.`,type:'info',read:false,createdAt:serverTimestamp()});
       await refreshProfile();showToast(isFirst?'Welcome, Super Admin!':'Account created! Awaiting approval.','success');navigate('/');
-    }catch(err:any){setError(err.code==='auth/email-already-in-use'?'An account with this email already exists.':err.code==='auth/wrong-password'||err.code==='auth/user-not-found'?'Invalid email or password.':err.message||'Something went wrong.');}
+    }catch(err:any){setError(err.code==='auth/email-already-in-use'?'An account with this email already exists.':err.code==='auth/wrong-password'||err.code==='auth/user-not-found'?'Invalid email or password.':err.message||'Something went wrong.');setForm(p=>({...p,password:'',confirmPassword:''}));}
     finally{setLoading(false);}};
   const handleGoogle=async()=>{setLoading(true);setError('');
     try{const r=await signInWithPopup(auth,googleProvider);const snap=await getDoc(doc(db,'users',r.user.uid));if(snap.exists())navigate(from,{replace:true});else navigate('/complete-profile',{replace:true});}
@@ -117,7 +117,9 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
           {mode==='login'&&<div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
             <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
               <input required type={showPass?'text':'password'} value={form.password} onChange={e=>set('password',e.target.value)} className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-navy dark:text-white font-bold outline-none focus:ring-2 focus:ring-navy/20 text-sm"/>
-              <button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div></div>}
+              <button type="button" onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{showPass?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
+            <div className="text-right mt-1.5"><Link to="/forgot-password" className="text-xs text-ocean font-bold hover:underline">Forgot password?</Link></div>
+          </div>}
           {mode==='complete-profile'&&form.email&&<div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs text-slate-500 font-bold">{GSIG}Signed in as <span className="text-navy dark:text-white">{form.email}</span></div>}
           <button type="submit" disabled={loading} className="w-full py-4 bg-navy text-white font-black rounded-xl hover:bg-ocean transition-all flex items-center justify-center gap-3 uppercase tracking-widest shadow-lg disabled:opacity-60">
             {loading?<div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:mode==='login'?<><LogIn className="w-5 h-5"/>Sign In</>:mode==='signup'?<><UserPlus className="w-5 h-5"/>Create Account</>:<><CheckCircle2 className="w-5 h-5"/>Complete Registration</>}

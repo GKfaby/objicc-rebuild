@@ -15,7 +15,7 @@
 
 ## 📖 About
 
-**ObjC-Rebuild** (`objicc-rebuild`) is a streamlined tool built to facilitate, automate, and rebuild Objective-C projects or workflows efficiently. Whether you're modernizing legacy pipelines or managing complex dependencies, this project provides the utility scripts and framework needed to simplify the process.
+**Objicc-Rebuild** (`objicc-rebuild`) is a streamlined tool built to facilitate, automate, and rebuild Objective-C projects or workflows efficiently. Whether you're modernizing legacy pipelines or managing complex dependencies, this project provides the utility scripts and framework needed to simplify the process.
 
 ---
 

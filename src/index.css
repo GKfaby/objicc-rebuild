@@ -191,6 +191,18 @@ body {
 .dark .dark\:text-amber-400   { color: var(--warn) !important; }
 .dark .text-red-400           { color: var(--bad)  !important; }
 
+/* Dark — tint backgrounds (was missing, so light-mode's bright pale
+   green/amber/red was bleeding through onto dark surfaces) */
+.dark .bg-green-50,
+.dark .bg-green-100,
+.dark .dark\:bg-green-900\/20  { background-color: rgba(0,190,160,0.12)  !important; }
+.dark .bg-amber-50,
+.dark .bg-amber-100,
+.dark .dark\:bg-amber-900\/20  { background-color: rgba(236,192,150,0.12) !important; }
+.dark .bg-red-50,
+.dark .bg-red-100,
+.dark .dark\:bg-red-900\/20    { background-color: rgba(231,86,231,0.12)  !important; }
+
 /* ── Gold stays gold always ──────────────────────────────────────────────── */
 .bg-gold, .text-gold { }   /* Tailwind handles via @theme, untouched */
 
