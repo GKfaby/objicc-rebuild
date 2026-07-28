@@ -1,4 +1,4 @@
-import{useState} from 'react';
+import{useState,useEffect} from 'react';
 import{Lock,Eye,EyeOff,KeyRound,CheckCircle2} from 'lucide-react';
 import{
   EmailAuthProvider,
@@ -19,7 +19,22 @@ const validatePw=(pw:string,confirm:string)=>{
 export default function ChangePasswordCard(){
   const{showToast}=useToast();
   const user=auth.currentUser;
-  const hasPasswordProvider=!!user?.providerData.some(p=>p.providerId==='password');
+  // auth.currentUser.providerData can be briefly stale right after a
+  // Google sign-in that merged into an existing password account —
+  // Firebase's client SDK doesn't always have the full provider list
+  // synced yet at that instant. Reloading forces a fresh fetch from
+  // the server so we don't wrongly think there's no password set.
+  const[hasPasswordProvider,setHasPasswordProvider]=useState(
+    ()=>!!user?.providerData.some(p=>p.providerId==='password')
+  );
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{await auth.currentUser?.reload();}catch{}
+      if(!cancelled)setHasPasswordProvider(!!auth.currentUser?.providerData.some(p=>p.providerId==='password'));
+    })();
+    return()=>{cancelled=true;};
+  },[]);
 
   const[currentPassword,setCurrentPassword]=useState('');
   const[newPassword,setNewPassword]=useState('');

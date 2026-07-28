@@ -73,6 +73,7 @@ export interface UserProfile {
   requestedRole?:'cadet'|'parent'; status:'pending'|'approved'|'rejected';
   school?:string; cadetName?:string; cadetFirstName?:string; cadetLastName?:string;
   cadetMiddleInitial?:string; cadetSchool?:string; avatarUrl?:string; createdAt:any;
+  banned?:boolean; bannedAt?:any; bannedReason?:string;
 }
 export interface Post {
   id:string; title:string; type:'notice'|'event';

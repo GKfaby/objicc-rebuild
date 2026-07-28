@@ -1,11 +1,12 @@
 import{useState,useEffect} from 'react';
-import{collection,onSnapshot,doc,updateDoc,deleteDoc,serverTimestamp,addDoc,query,orderBy} from 'firebase/firestore';
+import{collection,onSnapshot,doc,updateDoc,deleteDoc,serverTimestamp,addDoc,query,orderBy,getDocs,writeBatch} from 'firebase/firestore';
 import{db} from '../../firebase';
-import{Search,Check,X,Trash2,User,Shield,Mail,Phone,School,Calendar,Eye} from 'lucide-react';
+import{Search,Check,X,Trash2,User,Shield,Mail,Phone,School,Calendar,Eye,Ban,ShieldOff} from 'lucide-react';
 import{useToast} from '../../contexts/ToastContext';
 import{useUser} from '../../contexts/UserContext';
 import{ROLE_LABELS,SYSTEM_ROLES} from '../../types';
 import type{UserProfile,Role} from '../../types';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 const RC:Record<string,string>={
   super_admin:'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200',
@@ -22,13 +23,36 @@ export default function UsersPage(){
   const[users,setUsers]=useState<UserProfile[]>([]);const[loading,setLoading]=useState(true);
   const[search,setSearch]=useState('');const[roleFilter,setRoleFilter]=useState<Role|'all'>('all');
   const[selected,setSelected]=useState<UserProfile|null>(null);
+  const[confirmDelete,setConfirmDelete]=useState<UserProfile|null>(null);
+  const[confirmBan,setConfirmBan]=useState<UserProfile|null>(null);
   const{showToast}=useToast();const{profile:me}=useUser();
   useEffect(()=>{const q=query(collection(db,'users'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setUsers(snap.docs.map(d=>({uid:d.id,...d.data()} as UserProfile)));setLoading(false);});},[]);
   const notify=async(uid:string,title:string,message:string,type='info')=>{await addDoc(collection(db,'users',uid,'notifications'),{title,message,type,read:false,createdAt:serverTimestamp()});};
   const approveRole=async(u:UserProfile)=>{const r:Role=u.requestedRole==='cadet'?'cadet':'parent';await updateDoc(doc(db,'users',u.uid),{role:r,status:'approved',updatedAt:serverTimestamp()});await notify(u.uid,'Role Approved!',`Your role has been updated to ${ROLE_LABELS[r]}. Welcome!`,'success');showToast(`${u.displayName} approved as ${ROLE_LABELS[r]}`,'success');setSelected(null);};
   const rejectRole=async(u:UserProfile)=>{await updateDoc(doc(db,'users',u.uid),{status:'rejected',updatedAt:serverTimestamp()});await notify(u.uid,'Role Request Declined','Your role request was not approved.','warning');showToast(`${u.displayName} rejected`,'warning');setSelected(null);};
   const changeRole=async(u:UserProfile,r:Role)=>{if(u.uid===me?.uid&&r!=='super_admin'&&!window.confirm('Change your own role?'))return;await updateDoc(doc(db,'users',u.uid),{role:r,updatedAt:serverTimestamp()});await notify(u.uid,'Role Updated',`Your role has been changed to ${ROLE_LABELS[r]}.`,'info');showToast(`${u.displayName} → ${ROLE_LABELS[r]}`,'success');};
-  const delUser=async(u:UserProfile)=>{if(u.uid===me?.uid){showToast("Cannot delete yourself.",'error');return;}if(!window.confirm(`Delete ${u.displayName}?`))return;await deleteDoc(doc(db,'users',u.uid));showToast(`${u.displayName} deleted`,'info');setSelected(null);};
+  const performDelete=async(u:UserProfile)=>{
+    if(u.uid===me?.uid){showToast("Cannot delete yourself.",'error');setConfirmDelete(null);return;}
+    // Firestore doesn't cascade-delete subcollections, so we clear out
+    // their notifications first, then remove the profile doc itself.
+    // Note: this removes all trace of them from Firestore, but their
+    // Firebase Authentication login credential is a separate system
+    // that can't be deleted from client-side code — see chat notes.
+    const notifSnap=await getDocs(collection(db,'users',u.uid,'notifications'));
+    if(!notifSnap.empty){const batch=writeBatch(db);notifSnap.docs.forEach(d=>batch.delete(d.ref));await batch.commit();}
+    await deleteDoc(doc(db,'users',u.uid));
+    showToast(`${u.displayName} deleted`,'info');
+    setSelected(null);setConfirmDelete(null);
+  };
+  const performBanToggle=async(u:UserProfile)=>{
+    if(u.uid===me?.uid){showToast("Cannot restrict yourself.",'error');setConfirmBan(null);return;}
+    const next=!u.banned;
+    await updateDoc(doc(db,'users',u.uid),{banned:next,bannedAt:next?serverTimestamp():null});
+    if(next)await notify(u.uid,'Account Restricted','Your account has been restricted. Contact an administrator for details.','warning');
+    else await notify(u.uid,'Account Restored','Your account access has been restored.','success');
+    showToast(next?`${u.displayName} restricted`:`${u.displayName} restored`,next?'warning':'success');
+    setSelected(p=>p&&p.uid===u.uid?{...p,banned:next}:p);setConfirmBan(null);
+  };
   const filtered=users.filter(u=>{const q=search.toLowerCase();return(!q||[u.displayName,u.email,u.firstName,u.lastName].some(v=>v?.toLowerCase().includes(q)))&&(roleFilter==='all'||u.role===roleFilter);});
   const pending=filtered.filter(u=>['pending_cadet','pending_parent'].includes(u.role));
   const others=filtered.filter(u=>!['pending_cadet','pending_parent'].includes(u.role));
@@ -59,13 +83,14 @@ export default function UsersPage(){
         <tbody>{loading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={5} className="px-5 py-3"><div className="h-8 bg-slate-50 dark:bg-slate-700 rounded-lg animate-pulse"/></td></tr>)
         :others.length===0?<tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 text-sm">No users found.</td></tr>
         :others.map(u=><tr key={u.uid} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/30">
-          <td className="px-5 py-3"><div className="flex items-center gap-3">{u.avatarUrl?<img src={u.avatarUrl} className="w-9 h-9 rounded-xl object-cover shrink-0" alt=""/>:<div className="w-9 h-9 rounded-xl bg-navy/10 dark:bg-navy/40 flex items-center justify-center shrink-0"><User className="w-4 h-4 text-navy/60 dark:text-white/40"/></div>}<div className="min-w-0"><p className="font-bold text-navy dark:text-white truncate">{u.displayName}</p><p className="text-xs text-slate-500 dark:text-slate-400 truncate">{u.email}</p></div></div></td>
+          <td className="px-5 py-3"><div className="flex items-center gap-3">{u.avatarUrl?<img src={u.avatarUrl} className="w-9 h-9 rounded-xl object-cover shrink-0" alt=""/>:<div className="w-9 h-9 rounded-xl bg-navy/10 dark:bg-navy/40 flex items-center justify-center shrink-0"><User className="w-4 h-4 text-navy/60 dark:text-white/40"/></div>}<div className="min-w-0"><p className="font-bold text-navy dark:text-white truncate flex items-center gap-1.5">{u.displayName}{u.banned&&<span className="px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 text-[10px] font-black uppercase tracking-widest shrink-0">Restricted</span>}</p><p className="text-xs text-slate-500 dark:text-slate-400 truncate">{u.email}</p></div></div></td>
           <td className="px-4 py-3"><select value={u.role} onChange={e=>changeRole(u,e.target.value as Role)} className={`px-2 py-1.5 rounded-lg text-xs font-black outline-none border-none cursor-pointer ${RC[u.role]||'bg-slate-100 text-slate-700'}`}>{SYSTEM_ROLES.map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</select></td>
           <td className="px-4 py-3 hidden lg:table-cell"><div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">{u.phone&&<div className="flex items-center gap-1"><Phone className="w-3 h-3"/>{u.phone}</div>}{u.school&&<div className="flex items-center gap-1"><School className="w-3 h-3"/>{u.school}</div>}</div></td>
           <td className="px-4 py-3 hidden lg:table-cell"><div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Calendar className="w-3 h-3"/>{u.createdAt?.toDate?.().toLocaleDateString()}</div></td>
           <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
-            <button onClick={()=>setSelected(u)} className="p-1.5 hover:bg-navy/10 dark:hover:bg-white/10 rounded-lg"><Eye className="w-4 h-4 text-navy/60 dark:text-white/60"/></button>
-            <button onClick={()=>delUser(u)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-4 h-4"/></button>
+            <button onClick={()=>setSelected(u)} className="p-1.5 hover:bg-navy/10 dark:hover:bg-white/10 rounded-lg" title="View"><Eye className="w-4 h-4 text-navy/60 dark:text-white/60"/></button>
+            <button onClick={()=>setConfirmBan(u)} className={`p-1.5 rounded-lg ${u.banned?'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20':'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`} title={u.banned?'Restore access':'Restrict user'}>{u.banned?<ShieldOff className="w-4 h-4"/>:<Ban className="w-4 h-4"/>}</button>
+            <button onClick={()=>setConfirmDelete(u)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete"><Trash2 className="w-4 h-4"/></button>
           </div></td>
         </tr>)}</tbody>
       </table>
@@ -91,9 +116,30 @@ export default function UsersPage(){
           <select value={selected.role} onChange={e=>{changeRole(selected,e.target.value as Role);setSelected({...selected,role:e.target.value as Role});}} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold text-sm outline-none border border-slate-200 dark:border-slate-600">
             {SYSTEM_ROLES.map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
           </select>
-          <button onClick={()=>delUser(selected)} className="w-full py-2.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors">Delete User</button>
+          <button onClick={()=>setConfirmBan(selected)} className={`w-full py-2.5 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${selected.banned?'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20':'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}>{selected.banned?<><ShieldOff className="w-4 h-4"/>Restore Access</>:<><Ban className="w-4 h-4"/>Restrict User</>}</button>
+          <button onClick={()=>setConfirmDelete(selected)} className="w-full py-2.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold rounded-xl text-xs uppercase tracking-widest transition-colors">Delete User</button>
         </div>
       </div>
     </div>)}
+    <ConfirmDialog
+      open={!!confirmDelete}
+      title="Delete this user?"
+      message={`This permanently removes ${confirmDelete?.displayName}'s profile and notifications from the database. This cannot be undone.`}
+      confirmLabel="Delete"
+      danger
+      onCancel={()=>setConfirmDelete(null)}
+      onConfirm={()=>confirmDelete&&performDelete(confirmDelete)}
+    />
+    <ConfirmDialog
+      open={!!confirmBan}
+      title={confirmBan?.banned?'Restore this user\'s access?':'Restrict this user?'}
+      message={confirmBan?.banned
+        ?`${confirmBan?.displayName} will regain full access to their account.`
+        :`${confirmBan?.displayName} will be signed out and blocked from logging back in until restored. Their data is kept, nothing is deleted.`}
+      confirmLabel={confirmBan?.banned?'Restore':'Restrict'}
+      danger={!confirmBan?.banned}
+      onCancel={()=>setConfirmBan(null)}
+      onConfirm={()=>confirmBan&&performBanToggle(confirmBan)}
+    />
   </div>);
 }

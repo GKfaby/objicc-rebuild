@@ -31,7 +31,10 @@ export default function HomePage(){
           {!firebaseUser?(<>
             <Link to="/signup" className="group px-8 py-4 bg-gold text-navy font-black rounded-full hover:bg-white transition-all uppercase tracking-widest text-sm flex items-center gap-2 justify-center shadow-lg shadow-gold/20">Join OBJICC<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/></Link>
             <Link to="/events" className="px-8 py-4 bg-white/10 border border-white/30 backdrop-blur-sm text-white font-black rounded-full hover:bg-white/20 transition-all uppercase tracking-widest text-sm">View Events</Link>
-          </>):isPending?(<Link to="/pending" className="px-8 py-4 bg-amber-500 text-white font-black rounded-full hover:bg-amber-400 transition-all uppercase tracking-widest text-sm">Awaiting Approval</Link>
+          </>):isPending?(<>
+            <Link to="/pending" className="px-8 py-4 bg-amber-500 text-white font-black rounded-full hover:bg-amber-400 transition-all uppercase tracking-widest text-sm">Awaiting Approval</Link>
+            <Link to="/profile" className="px-8 py-4 bg-white/10 border border-white/30 backdrop-blur-sm text-white font-black rounded-full hover:bg-white/20 transition-all uppercase tracking-widest text-sm">My Profile</Link>
+          </>
           ):isMember?(<>
             <Link to="/shop" className="group px-8 py-4 bg-gold text-navy font-black rounded-full hover:bg-white transition-all uppercase tracking-widest text-sm flex items-center gap-2 justify-center shadow-lg shadow-gold/20">Visit Shop<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/></Link>
             <Link to="/profile" className="px-8 py-4 bg-white/10 border border-white/30 backdrop-blur-sm text-white font-black rounded-full hover:bg-white/20 transition-all uppercase tracking-widest text-sm">My Profile</Link>

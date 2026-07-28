@@ -25,11 +25,13 @@ service cloud.firestore {
         (isSignedIn() && resource.data.role in
           ['super_admin','admin','staff','recruitment_officer','editor']);
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isStaff();
+      // A banned user can't modify their own doc (e.g. un-banning
+      // themselves) — staff can always manage it regardless.
+      allow update: if isStaff() || (isOwner(uid) && resource.data.banned!=true);
       allow delete: if isAdmin();
 
       match /notifications/{notifId} {
-        allow read, update, delete: if isOwner(uid);
+        allow read, update, delete: if isOwner(uid) || isStaff();
         allow create: if isSignedIn();
       }
     }

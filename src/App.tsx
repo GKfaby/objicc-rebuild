@@ -1,5 +1,5 @@
 import{BrowserRouter,Routes,Route,Navigate,useLocation} from 'react-router-dom';
-import{useState} from 'react';
+import{useState,useEffect} from 'react';
 import{UserProvider} from './contexts/UserContext';
 import{ThemeProvider} from './contexts/ThemeContext';
 import{ToastProvider} from './contexts/ToastContext';
@@ -11,6 +11,7 @@ import AuthForm from './components/auth/AuthForm';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SessionManager from './components/SessionManager';
 import{useUser} from './contexts/UserContext';
+import{useToast} from './contexts/ToastContext';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
 import{auth,googleProvider} from './firebase';
 import{Lock,X,Eye,EyeOff} from 'lucide-react';
@@ -75,7 +76,14 @@ function AdminLoginPanel({onClose}:{onClose:()=>void}){
 
 function MaintenanceGate({children}:{children:React.ReactNode}){
   const{systemSettings,profile}=useUser();
+  const{showToast}=useToast();
   const[showLogin,setShowLogin]=useState(false);const[clicks,setClicks]=useState(0);
+  useEffect(()=>{
+    if(sessionStorage.getItem('objicc_banned_notice')){
+      sessionStorage.removeItem('objicc_banned_notice');
+      showToast('Your account has been restricted. Contact an administrator for details.','error');
+    }
+  },[showToast]);
   const handleIconClick=()=>{const n=clicks+1;setClicks(n);if(n>=3){setShowLogin(true);setClicks(0);}};
   if(systemSettings.maintenanceMode&&!['super_admin','admin'].includes(profile?.role||'')){
     return(<div className="min-h-screen flex items-center justify-center bg-navy text-white px-4 relative overflow-hidden">
