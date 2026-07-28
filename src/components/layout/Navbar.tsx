@@ -6,6 +6,7 @@ import{signOut} from 'firebase/auth';
 import{collection,query,where,onSnapshot} from 'firebase/firestore';
 import{useUser} from '../../contexts/UserContext';
 import{useTheme} from '../../contexts/ThemeContext';
+import EmailVerificationBanner from '../EmailVerificationBanner';
 export default function Navbar(){
   const[scrolled,setScrolled]=useState(false);
   const[mobileOpen,setMobileOpen]=useState(false);
@@ -39,7 +40,9 @@ export default function Navbar(){
   ].filter(l=>l.show!==false);
   const navBg=scrolled||!isHome?'bg-navy/95 backdrop-blur-md shadow-xl py-3':'bg-transparent py-5';
   return(
-    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${navBg}`}>
+    <div className="fixed top-0 left-0 w-full z-50">
+      <EmailVerificationBanner/>
+      <nav className={`transition-all duration-300 ${navBg}`}>
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group shrink-0">
           {systemSettings.logoUrl&&!logoError?(
@@ -141,5 +144,6 @@ export default function Navbar(){
         </div>
       )}
     </nav>
+    </div>
   );
 }

@@ -12,7 +12,7 @@ export default function ContactPage(){
     try{await addDoc(collection(db,'suggestions'),{...form,category:'Contact',anonymous:false,status:'pending',createdAt:serverTimestamp()});
       showToast("Message sent! We will get back to you soon.",'success');setForm({name:'',email:'',message:''});
     }catch{showToast('Failed to send. Please try again.','error');}finally{setSending(false);}};
-  return(<div className="min-h-screen pt-28 pb-16 bg-slate-50 dark:bg-darkbg">
+  return(<div className="min-h-screen pt-32 pb-16 bg-slate-50 dark:bg-darkbg">
     <div className="container mx-auto px-4"><div className="max-w-5xl mx-auto">
       <div className="mb-10"><h1 className="text-4xl font-black text-navy dark:text-white uppercase tracking-tight mb-2">Contact Us</h1><p className="text-slate-500">Reach out via any of the channels below.</p></div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

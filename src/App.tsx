@@ -12,6 +12,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SessionManager from './components/SessionManager';
 import{useUser} from './contexts/UserContext';
 import{useToast} from './contexts/ToastContext';
+import{NavOffsetProvider,useNavOffset} from './contexts/NavOffsetContext';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
 import{auth,googleProvider} from './firebase';
 import{Lock,X,Eye,EyeOff} from 'lucide-react';
@@ -101,7 +102,8 @@ function MaintenanceGate({children}:{children:React.ReactNode}){
 }
 
 function PublicLayout({children}:{children:React.ReactNode}){
-  return(<><Navbar/><main className="min-h-screen">{children}</main><Footer/></>);
+  const{bannerHeight}=useNavOffset();
+  return(<><Navbar/><main className="min-h-screen" style={{paddingTop:bannerHeight}}>{children}</main><Footer/></>);
 }
 
 function GuestRedirect(){
@@ -112,7 +114,7 @@ function GuestRedirect(){
 
 export default function App(){
   return(<BrowserRouter>
-    <UserProvider><ThemeProvider><ToastProvider>
+    <UserProvider><ThemeProvider><ToastProvider><NavOffsetProvider>
       <SessionManager/>
       <MaintenanceGate>
         <Routes>
@@ -151,6 +153,6 @@ export default function App(){
           <Route path="*" element={<NotFoundPage/>}/>
         </Routes>
       </MaintenanceGate>
-    </ToastProvider></ThemeProvider></UserProvider>
+    </NavOffsetProvider></ToastProvider></ThemeProvider></UserProvider>
   </BrowserRouter>);
 }

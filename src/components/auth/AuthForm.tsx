@@ -1,8 +1,8 @@
 import{useState,useEffect} from 'react';
 import{useNavigate,useLocation,Link} from 'react-router-dom';
 import{LogIn,UserPlus,Lock,Mail,School,Eye,EyeOff,CheckCircle2} from 'lucide-react';
-import{signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,updateProfile,linkWithCredential,EmailAuthProvider,GoogleAuthProvider,fetchSignInMethodsForEmail} from 'firebase/auth';
-import{doc,setDoc,getDoc,serverTimestamp,collection,writeBatch} from 'firebase/firestore';
+import{signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,updateProfile,linkWithCredential,EmailAuthProvider,GoogleAuthProvider,fetchSignInMethodsForEmail,sendEmailVerification} from 'firebase/auth';
+import{doc,setDoc,getDoc,serverTimestamp,collection,writeBatch,addDoc,query,where,getDocs} from 'firebase/firestore';
 import PhoneInput from 'react-phone-number-input';
 import{isValidPhoneNumber} from 'react-phone-number-input';
 import{auth,db,googleProvider} from '../../firebase';
@@ -40,7 +40,7 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
       const mi=form.middleInitial?` ${form.middleInitial}.`:'';
       const dn=`${form.firstName.trim()}${mi} ${form.lastName.trim()}`.trim();
       let uid=auth.currentUser?.uid,email=auth.currentUser?.email||form.email;
-      if(mode==='signup'){const c=await createUserWithEmailAndPassword(auth,form.email,form.password);uid=c.user.uid;email=c.user.email!;await updateProfile(c.user,{displayName:dn});}
+      if(mode==='signup'){const c=await createUserWithEmailAndPassword(auth,form.email,form.password);uid=c.user.uid;email=c.user.email!;await updateProfile(c.user,{displayName:dn});try{await sendEmailVerification(c.user);}catch{}}
       if(mode==='complete-profile'){if(!auth.currentUser)throw new Error('Session expired.');uid=auth.currentUser.uid;email=auth.currentUser.email!;await updateProfile(auth.currentUser,{displayName:dn});try{await linkWithCredential(auth.currentUser,EmailAuthProvider.credential(email,form.password));}catch(le:any){if(le.code!=='auth/provider-already-linked'&&le.code!=='auth/email-already-in-use')throw le;}}
       if(!uid)throw new Error('Auth failed.');
       const configRef=doc(db,'system','config');const isFirst=!(await getDoc(configRef)).exists();
@@ -58,7 +58,30 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
     }catch(err:any){setError(err.code==='auth/email-already-in-use'?'An account with this email already exists.':err.code==='auth/wrong-password'||err.code==='auth/user-not-found'?'Invalid email or password.':err.message||'Something went wrong.');setForm(p=>({...p,password:'',confirmPassword:''}));}
     finally{setLoading(false);}};
   const handleGoogle=async()=>{setLoading(true);setError('');
-    try{const r=await signInWithPopup(auth,googleProvider);const snap=await getDoc(doc(db,'users',r.user.uid));if(snap.exists())navigate(from,{replace:true});else navigate('/complete-profile',{replace:true});}
+    try{
+      const r=await signInWithPopup(auth,googleProvider);
+      const snap=await getDoc(doc(db,'users',r.user.uid));
+      if(snap.exists()){
+        const data=snap.data() as any;
+        const storedName=`${data.firstName||''} ${data.lastName||''}`.trim().toLowerCase();
+        const googleName=(r.user.displayName||'').trim().toLowerCase();
+        if(googleName&&storedName&&googleName!==storedName){
+          // Google account names sometimes differ from the person's real
+          // name on file — nudge them once (not on every login) to update
+          // their profile instead of forcing it.
+          const existing=await getDocs(query(collection(db,'users',r.user.uid,'notifications'),where('tag','==','name_mismatch'),where('read','==',false)));
+          if(existing.empty){
+            await addDoc(collection(db,'users',r.user.uid,'notifications'),{
+              tag:'name_mismatch',
+              title:'Update Your Name?',
+              message:`Your Google account shows "${r.user.displayName}", but your profile is set to "${data.firstName} ${data.lastName}". If your profile name isn't right, you can update it any time in My Profile.`,
+              type:'info',read:false,createdAt:serverTimestamp(),
+            });
+          }
+        }
+        navigate(from,{replace:true});
+      }else navigate('/complete-profile',{replace:true});
+    }
     catch(err:any){
       if(err.code==='auth/account-exists-with-different-credential'){
         // Someone already has a password-based account with this email.

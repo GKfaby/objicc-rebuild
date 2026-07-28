@@ -25,11 +25,12 @@ export default function UsersPage(){
   const[selected,setSelected]=useState<UserProfile|null>(null);
   const[confirmDelete,setConfirmDelete]=useState<UserProfile|null>(null);
   const[confirmBan,setConfirmBan]=useState<UserProfile|null>(null);
+  const[confirmReject,setConfirmReject]=useState<UserProfile|null>(null);
   const{showToast}=useToast();const{profile:me}=useUser();
   useEffect(()=>{const q=query(collection(db,'users'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setUsers(snap.docs.map(d=>({uid:d.id,...d.data()} as UserProfile)));setLoading(false);});},[]);
   const notify=async(uid:string,title:string,message:string,type='info')=>{await addDoc(collection(db,'users',uid,'notifications'),{title,message,type,read:false,createdAt:serverTimestamp()});};
   const approveRole=async(u:UserProfile)=>{const r:Role=u.requestedRole==='cadet'?'cadet':'parent';await updateDoc(doc(db,'users',u.uid),{role:r,status:'approved',updatedAt:serverTimestamp()});await notify(u.uid,'Role Approved!',`Your role has been updated to ${ROLE_LABELS[r]}. Welcome!`,'success');showToast(`${u.displayName} approved as ${ROLE_LABELS[r]}`,'success');setSelected(null);};
-  const rejectRole=async(u:UserProfile)=>{await updateDoc(doc(db,'users',u.uid),{status:'rejected',updatedAt:serverTimestamp()});await notify(u.uid,'Role Request Declined','Your role request was not approved.','warning');showToast(`${u.displayName} rejected`,'warning');setSelected(null);};
+  const rejectRole=async(u:UserProfile)=>{await updateDoc(doc(db,'users',u.uid),{status:'rejected',updatedAt:serverTimestamp()});await notify(u.uid,'Role Request Declined','Your role request was not approved.','warning');showToast(`${u.displayName} rejected`,'warning');setSelected(null);setConfirmReject(null);};
   const changeRole=async(u:UserProfile,r:Role)=>{if(u.uid===me?.uid&&r!=='super_admin'&&!window.confirm('Change your own role?'))return;await updateDoc(doc(db,'users',u.uid),{role:r,updatedAt:serverTimestamp()});await notify(u.uid,'Role Updated',`Your role has been changed to ${ROLE_LABELS[r]}.`,'info');showToast(`${u.displayName} → ${ROLE_LABELS[r]}`,'success');};
   const performDelete=async(u:UserProfile)=>{
     if(u.uid===me?.uid){showToast("Cannot delete yourself.",'error');setConfirmDelete(null);return;}
@@ -66,12 +67,12 @@ export default function UsersPage(){
     </div>
     {pending.length>0&&<div>
       <h2 className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block"/>Pending Approvals ({pending.length})</h2>
-      <div className="space-y-2">{pending.map(u=><div key={u.uid} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4 flex items-center gap-4 flex-wrap">
+      <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">{pending.map(u=><div key={u.uid} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4 flex items-center gap-4 flex-wrap">
         <div className="flex-1 min-w-0"><p className="font-black text-navy dark:text-white">{u.displayName}</p><p className="text-xs text-slate-600 dark:text-slate-400">{u.email}</p><p className="text-xs text-amber-800 dark:text-amber-300 mt-1">Requesting: <strong>{u.requestedRole}</strong>{u.school&&` · ${u.school}`}</p></div>
         <div className="flex gap-2 shrink-0">
           <button onClick={()=>setSelected(u)} className="p-2 hover:bg-amber-100 dark:hover:bg-amber-800/30 rounded-xl"><Eye className="w-4 h-4 text-amber-800 dark:text-amber-300"/></button>
           <button onClick={()=>approveRole(u)} className="flex items-center gap-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest"><Check className="w-3 h-3"/>Approve</button>
-          <button onClick={()=>rejectRole(u)} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl text-xs font-black uppercase tracking-widest"><X className="w-3 h-3"/>Reject</button>
+          <button onClick={()=>setConfirmReject(u)} className="flex items-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-xl text-xs font-black uppercase tracking-widest"><X className="w-3 h-3"/>Reject</button>
         </div>
       </div>)}</div>
     </div>}
@@ -80,6 +81,9 @@ export default function UsersPage(){
         <thead><tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/40">
           {['User','Role','Info','Joined',''].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 first:pl-5">{h}</th>)}
         </tr></thead>
+      </table>
+      <div className="max-h-[560px] overflow-y-auto">
+      <table className="w-full text-sm">
         <tbody>{loading?[...Array(5)].map((_,i)=><tr key={i}><td colSpan={5} className="px-5 py-3"><div className="h-8 bg-slate-50 dark:bg-slate-700 rounded-lg animate-pulse"/></td></tr>)
         :others.length===0?<tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 text-sm">No users found.</td></tr>
         :others.map(u=><tr key={u.uid} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/30">
@@ -94,6 +98,7 @@ export default function UsersPage(){
           </div></td>
         </tr>)}</tbody>
       </table>
+      </div>
     </div>
     {selected&&(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
@@ -109,7 +114,7 @@ export default function UsersPage(){
         </div>
         {['pending_cadet','pending_parent'].includes(selected.role)&&<div className="px-6 pb-4 flex gap-2">
           <button onClick={()=>approveRole(selected)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><Check className="w-4 h-4"/>Approve</button>
-          <button onClick={()=>rejectRole(selected)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-800/40 text-red-700 dark:text-red-300 font-black rounded-xl text-xs uppercase tracking-widest"><X className="w-4 h-4"/>Reject</button>
+          <button onClick={()=>setConfirmReject(selected)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-800/40 text-red-700 dark:text-red-300 font-black rounded-xl text-xs uppercase tracking-widest"><X className="w-4 h-4"/>Reject</button>
         </div>}
         <div className="px-6 pb-5 border-t border-slate-100 dark:border-slate-700 pt-4 space-y-2">
           <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Change Role</p>
@@ -121,6 +126,15 @@ export default function UsersPage(){
         </div>
       </div>
     </div>)}
+    <ConfirmDialog
+      open={!!confirmReject}
+      title="Reject this application?"
+      message={`${confirmReject?.displayName}'s role request will be declined. They'll be notified and can be re-approved later if needed.`}
+      confirmLabel="Reject"
+      danger
+      onCancel={()=>setConfirmReject(null)}
+      onConfirm={()=>confirmReject&&rejectRole(confirmReject)}
+    />
     <ConfirmDialog
       open={!!confirmDelete}
       title="Delete this user?"

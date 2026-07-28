@@ -11,6 +11,7 @@ interface UserContextType{
   canAccess:(r:Role|Role[])=>boolean;refreshProfile:()=>Promise<void>;
   cart:CartItem[];setCart:React.Dispatch<React.SetStateAction<CartItem[]>>;
   schools:string[];systemSettings:SystemSettings;needsProfileCompletion:boolean;
+  emailVerified:boolean;refreshEmailVerified:()=>Promise<boolean>;
 }
 const Ctx=createContext<UserContextType|undefined>(undefined);
 const NONE:RolePermissions={manageRoles:false,manageUsers:false,canViewUserUpdates:false,managePosts:false,manageMerchandise:false,manageRequests:false,manageOrders:false,manageApplications:false,printPermissionSlips:false,viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false};
@@ -24,6 +25,7 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const[schools,setSchools]=useState<string[]>(JAMAICAN_SCHOOLS);
   const[needsProfileCompletion,setNPC]=useState(false);
   const[systemSettings,setSS]=useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
+  const[emailVerified,setEmailVerified]=useState(false);
 
   useEffect(()=>{
     const unsub=onSnapshot(doc(db,'settings','global'),(snap)=>{
@@ -65,6 +67,7 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
     let unsubProfile:(()=>void)|undefined;
     const unsubAuth=onAuthStateChanged(auth,(fbUser)=>{
       setFU(fbUser);
+      setEmailVerified(!!fbUser?.emailVerified);
       unsubProfile?.();unsubProfile=undefined;
       if(fbUser){
         unsubProfile=onSnapshot(doc(db,'users',fbUser.uid),async(snap)=>{
@@ -94,7 +97,15 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const isPending=profile?['pending_cadet','pending_parent'].includes(profile.role):false;
   const canAccess=useCallback((r:Role|Role[])=>{if(!profile)return false;const rs=Array.isArray(r)?r:[r];return rs.includes(profile.role);},[profile]);
   const refreshProfile=useCallback(async()=>{const u=auth.currentUser;if(u)await fetchProfile(u);},[fetchProfile]);
+  const refreshEmailVerified=useCallback(async()=>{
+    const u=auth.currentUser;
+    if(!u)return false;
+    try{await u.reload();}catch{}
+    const v=!!auth.currentUser?.emailVerified;
+    setEmailVerified(v);
+    return v;
+  },[]);
 
-  return<Ctx.Provider value={{firebaseUser,profile,permissions,loading,isStaff,isMember,isPending,canAccess,refreshProfile,cart,setCart,schools,systemSettings,needsProfileCompletion}}>{children}</Ctx.Provider>;
+  return<Ctx.Provider value={{firebaseUser,profile,permissions,loading,isStaff,isMember,isPending,canAccess,refreshProfile,cart,setCart,schools,systemSettings,needsProfileCompletion,emailVerified,refreshEmailVerified}}>{children}</Ctx.Provider>;
 };
 export const useUser=()=>{const c=useContext(Ctx);if(!c)throw new Error('useUser outside provider');return c;};
