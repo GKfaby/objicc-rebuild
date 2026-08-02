@@ -1,6 +1,6 @@
 import{useState,useEffect} from 'react';
 import{Link,useLocation,useNavigate} from 'react-router-dom';
-import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell,Type} from 'lucide-react';
+import{Menu,X,Sun,Moon,User,LogIn,LayoutDashboard,Bell,Type,LogOut} from 'lucide-react';
 import{auth,db} from '../../firebase';
 import{signOut} from 'firebase/auth';
 import{collection,query,where,onSnapshot} from 'firebase/firestore';
@@ -100,6 +100,7 @@ export default function Navbar(){
                   {profile.avatarUrl?<img src={profile.avatarUrl} className="w-5 h-5 rounded-full object-cover" alt=""/>:<div className="w-5 h-5 rounded-full bg-gold/30 flex items-center justify-center"><User className="w-3 h-3"/></div>}
                   {profile.firstName}
                 </Link>
+                <button onClick={handleSignOut} title="Sign out" className="p-2 text-white/60 hover:text-red-300 hover:bg-white/10 rounded-lg transition-all"><LogOut className="w-4 h-4"/></button>
               </>
             ):(
               <Link to="/login" className="flex items-center gap-2 px-5 py-2 bg-gold text-navy font-black rounded-full uppercase tracking-widest text-xs hover:bg-white transition-all shadow-lg shadow-gold/20">

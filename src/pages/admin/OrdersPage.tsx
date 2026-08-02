@@ -72,7 +72,7 @@ export default function OrdersPage(){
   // ── manageOrders-only actions ────────────────────────────────────────────
   const undoComplete=async(o:MerchRequest)=>{
     if(!canManage)return;
-    await upd(o.id,{status:'pending'});showToast('Order restored to pending','info');
+    await upd(o.id,{status:'pending',paymentStatus:'pending'});showToast('Order fully reset to pending','info');
   };
   const restoreFromTrash=async(o:MerchRequest)=>{
     if(!canManage)return;
@@ -115,7 +115,7 @@ export default function OrdersPage(){
               {order.items?.map((item:CartItem,i:number)=>(
                 <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   {item.image&&<img src={item.image} className="w-10 h-10 rounded-lg object-cover shrink-0" alt=""/>}
-                  <div className="flex-1 min-w-0"><p className="font-bold text-navy dark:text-white text-sm truncate">{item.name}</p><p className="text-xs text-slate-400">Qty: {item.quantity}</p></div>
+                  <div className="flex-1 min-w-0"><p className="font-bold text-navy dark:text-white text-sm truncate">{item.name}</p>{item.selectedSize&&<p className="text-xs text-slate-400">{item.selectedSize}</p>}<p className="text-xs text-slate-400">Qty: {item.quantity}</p></div>
                   <span className="font-black text-navy dark:text-white text-sm">{item.price}</span>
                 </div>
               ))}
@@ -136,7 +136,7 @@ export default function OrdersPage(){
           </>}
           {/* manageOrders-only: undo complete */}
           {canManage&&order.status==='completed'&&(
-            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Complete → Pending</button>
+            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Complete → Reset to Pending</button>
           )}
           <button onClick={()=>{softDelete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-black rounded-xl text-xs uppercase tracking-widest"><Trash2 className="w-4 h-4"/>Move to Recycle Bin</button>
         </div>

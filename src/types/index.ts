@@ -10,6 +10,7 @@ export const MEMBER_ROLES: Role[] = ['cadet','parent','super_admin','admin','sta
 export interface RolePermissions {
   manageRoles:boolean;
   manageUsers:boolean;
+  manageProtectedUsers:boolean;  // delete/restrict Super Admin & Admin accounts
   canViewUserUpdates:boolean;
   managePosts:boolean;
   manageMerchandise:boolean;
@@ -23,16 +24,16 @@ export interface RolePermissions {
 }
 
 const NONE: RolePermissions = {
-  manageRoles:false,manageUsers:false,canViewUserUpdates:false,
+  manageRoles:false,manageUsers:false,manageProtectedUsers:false,canViewUserUpdates:false,
   managePosts:false,manageMerchandise:false,manageRequests:false,
   manageOrders:false,manageApplications:false,printPermissionSlips:false,
   viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false,
 };
 
 export const DEFAULT_PERMISSIONS: Record<string,RolePermissions> = {
-  super_admin:{manageRoles:true,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
-  admin:{manageRoles:true,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
-  staff:{manageRoles:false,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
+  super_admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
+  admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
+  staff:{manageRoles:false,manageUsers:true,manageProtectedUsers:false,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
   recruitment_officer:{...NONE,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true},
   editor:{...NONE,managePosts:true,viewAdminDashboard:true},
   cadet:{...NONE},parent:{...NONE},pending_cadet:{...NONE},pending_parent:{...NONE},visitor:{...NONE},
@@ -87,7 +88,7 @@ export interface Merchandise {
   category?:string; isPublished:boolean; pricingOptions?:PricingOption[];
   totalStock?:number; createdAt:any;
 }
-export interface CartItem { id:string; name:string; price:string; quantity:number; selectedSize?:string; image?:string; }
+export interface CartItem { id:string; name:string; price:string; quantity:number; selectedSize?:string; image?:string; lineKey?:string; }
 export interface Application {
   id:string; cadetName:string; school:string; grade:string; parentName:string;
   parentPhone:string; cadetPhone?:string; status:'pending'|'reviewed'|'accepted'|'rejected';

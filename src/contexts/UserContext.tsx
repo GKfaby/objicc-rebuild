@@ -65,12 +65,15 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
 
   useEffect(()=>{
     let unsubProfile:(()=>void)|undefined;
+    let unsubRole:(()=>void)|undefined;
     const unsubAuth=onAuthStateChanged(auth,(fbUser)=>{
       setFU(fbUser);
       setEmailVerified(!!fbUser?.emailVerified);
       unsubProfile?.();unsubProfile=undefined;
+      unsubRole?.();unsubRole=undefined;
       if(fbUser){
-        unsubProfile=onSnapshot(doc(db,'users',fbUser.uid),async(snap)=>{
+        unsubProfile=onSnapshot(doc(db,'users',fbUser.uid),(snap)=>{
+          unsubRole?.();unsubRole=undefined;
           if(snap.exists()){
             const data={uid:fbUser.uid,...snap.data()} as UserProfile;
             if(data.banned){
@@ -82,13 +85,24 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
               signOut(auth);
               return;
             }
-            setProfile(data);setPerms(await resolvePerms(data.role));setNPC(false);
-          }else{setProfile(null);setPerms(NONE);setNPC(true);}
-          setLoading(false);
+            setProfile(data);setNPC(false);
+            if(data.role==='super_admin'){
+              setPerms(DEFAULT_PERMISSIONS.super_admin);setLoading(false);
+            }else{
+              // Live subscription, not a one-time fetch — if an admin
+              // edits this role's permissions on the Roles page while
+              // someone with that role is active, it applies to them
+              // right away instead of waiting for their next login.
+              unsubRole=onSnapshot(doc(db,'roles',data.role),(roleSnap)=>{
+                setPerms(roleSnap.exists()?(roleSnap.data() as any).permissions:(DEFAULT_PERMISSIONS[data.role]??NONE));
+                setLoading(false);
+              },()=>{setPerms(DEFAULT_PERMISSIONS[data.role]??NONE);setLoading(false);});
+            }
+          }else{setProfile(null);setPerms(NONE);setNPC(true);setLoading(false);}
         },()=>setLoading(false));
       }else{setProfile(null);setPerms(NONE);setNPC(false);setLoading(false);}
     });
-    return()=>{unsubAuth();unsubProfile?.();};
+    return()=>{unsubAuth();unsubProfile?.();unsubRole?.();};
   },[]);
 
   const STAFF:Role[]=['super_admin','admin','staff','recruitment_officer','editor'];

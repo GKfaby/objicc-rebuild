@@ -18,6 +18,18 @@ service cloud.firestore {
       let roleDoc = get(/databases/$(database)/documents/roles/$(myRole()));
       return roleDoc.exists && roleDoc.data.permissions[perm] == true;
     }
+    // A "protected" account (Super Admin / Admin) can only be touched --
+    // deleted, banned, or have its role changed -- by an admin-tier user,
+    // or by a role explicitly granted manageProtectedUsers. This also
+    // blocks promoting a non-protected user INTO a protected role, not
+    // just editing an already-protected one.
+    function targetIsOrBecomesProtected() {
+      return resource.data.role in ['super_admin','admin'] ||
+        (request.resource != null && request.resource.data.role in ['super_admin','admin']);
+    }
+    function canManageThisUser() {
+      return isAdmin() || (hasPermission('manageUsers') && (!targetIsOrBecomesProtected() || hasPermission('manageProtectedUsers')));
+    }
 
     // Users
     match /users/{uid} {
@@ -26,9 +38,10 @@ service cloud.firestore {
           ['super_admin','admin','staff','recruitment_officer','editor']);
       allow create: if isOwner(uid);
       // A banned user can't modify their own doc (e.g. un-banning
-      // themselves) — staff can always manage it regardless.
-      allow update: if isStaff() || (isOwner(uid) && resource.data.banned!=true);
-      allow delete: if isAdmin();
+      // themselves) — staff with manageUsers can, subject to the
+      // protected-account check above.
+      allow update: if (isOwner(uid) && resource.data.banned!=true) || canManageThisUser();
+      allow delete: if canManageThisUser();
 
       match /notifications/{notifId} {
         allow read, update, delete: if isOwner(uid) || isStaff();
@@ -120,8 +133,12 @@ service cloud.firestore {
           (request.auth.uid in
             get(/databases/$(database)/documents/conversations/$(convId)).data.participants
             || isStaff());
-        allow update: if isSignedIn();
-        allow delete: if isAdmin();
+        allow update: if isSignedIn() &&
+          (request.auth.uid in
+            get(/databases/$(database)/documents/conversations/$(convId)).data.participants
+            || isStaff());
+        allow delete: if isSignedIn() &&
+          (resource.data.senderId==request.auth.uid || isStaff());
       }
     }
 

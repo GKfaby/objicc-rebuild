@@ -32,6 +32,17 @@ export default function EmailVerificationBanner(){
     return()=>{ro.disconnect();setBannerHeight(0);};
   },[show,setBannerHeight]);
 
+  // Auto-recheck the moment the user comes back to this tab -- exactly
+  // when they'd have just clicked the verification link elsewhere, so
+  // the banner can disappear on its own without needing "I've Verified".
+  useEffect(()=>{
+    if(!show)return;
+    const check=()=>{if(document.visibilityState==='visible')refreshEmailVerified();};
+    document.addEventListener('visibilitychange',check);
+    window.addEventListener('focus',check);
+    return()=>{document.removeEventListener('visibilitychange',check);window.removeEventListener('focus',check);};
+  },[show,refreshEmailVerified]);
+
   if(!show)return null;
 
   const dismiss=()=>{sessionStorage.setItem('objicc_verify_dismissed','1');setDismissed(true);};
@@ -55,23 +66,25 @@ export default function EmailVerificationBanner(){
     showToast(verified?'Email verified -- thanks!':'Not verified yet -- check your inbox (and spam folder).',verified?'success':'info');
   };
 
-  return(<div ref={ref} className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/50 px-4 py-2.5">
-    <div className="max-w-6xl mx-auto flex items-center gap-3 flex-wrap">
-      <MailWarning className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"/>
-      <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold flex-1 min-w-0">
-        Please verify your email address ({firebaseUser.email}) to help keep your account secure.
-        {' '}If it hasn't arrived within a few minutes, please check your spam or junk folder.
-      </p>
-      <div className="flex items-center gap-2 shrink-0">
-        <button onClick={resend} disabled={sending||cooldown} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-black uppercase tracking-widest">
+  return(<div ref={ref} className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/50 px-4 py-3">
+    <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+      <div className="flex items-start sm:items-center gap-2.5 flex-1 min-w-0">
+        <MailWarning className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0"/>
+        <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-bold leading-snug">
+          Please verify your email address ({firebaseUser.email}) to help keep your account secure.
+          {' '}If it hasn't arrived within a few minutes, please check your spam or junk folder.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+        <button onClick={resend} disabled={sending||cooldown} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-black uppercase tracking-widest whitespace-nowrap">
           {sending?<div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Send className="w-3 h-3"/>}
           {cooldown?'Sent':'Resend Email'}
         </button>
-        <button onClick={checkNow} disabled={checking} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-black uppercase tracking-widest">
+        <button onClick={checkNow} disabled={checking} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-black uppercase tracking-widest whitespace-nowrap">
           {checking?<div className="w-3 h-3 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin"/>:<RefreshCw className="w-3 h-3"/>}
           I've Verified
         </button>
-        <button onClick={dismiss} className="p-1.5 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300" title="Dismiss for this session"><X className="w-4 h-4"/></button>
+        <button onClick={dismiss} className="p-1.5 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 shrink-0" title="Dismiss for this session"><X className="w-4 h-4"/></button>
       </div>
     </div>
   </div>);

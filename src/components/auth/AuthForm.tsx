@@ -1,6 +1,6 @@
 import{useState,useEffect} from 'react';
 import{useNavigate,useLocation,Link} from 'react-router-dom';
-import{LogIn,UserPlus,Lock,Mail,School,Eye,EyeOff,CheckCircle2} from 'lucide-react';
+import{LogIn,UserPlus,Lock,Mail,School,Eye,EyeOff,CheckCircle2,Home} from 'lucide-react';
 import{signInWithEmailAndPassword,createUserWithEmailAndPassword,signInWithPopup,updateProfile,linkWithCredential,EmailAuthProvider,GoogleAuthProvider,fetchSignInMethodsForEmail,sendEmailVerification} from 'firebase/auth';
 import{doc,setDoc,getDoc,serverTimestamp,collection,writeBatch,addDoc,query,where,getDocs} from 'firebase/firestore';
 import PhoneInput from 'react-phone-number-input';
@@ -115,7 +115,11 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
   const pwStr=form.password?[form.password.length>=8,/[A-Z]/.test(form.password),/[0-9]/.test(form.password),/[!@#$%^&*(),.?":{}|<>]/.test(form.password)].filter(Boolean).length:0;
   const pwCols=['bg-red-400','bg-orange-400','bg-yellow-400','bg-green-400'];
   return(<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-navy via-ocean to-navy/80 px-4 py-20">
-    <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
+    <div className="w-full max-w-md">
+      {mode!=='complete-profile'&&<Link to="/" className="flex items-center gap-2 text-white/70 hover:text-white text-xs font-bold uppercase tracking-widest mb-4 w-fit">
+        <Home className="w-3.5 h-3.5"/>Back to Home
+      </Link>}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
       <div className="bg-navy px-8 py-6">
         <h1 className="text-2xl font-black text-white uppercase tracking-tight">{mode==='login'?'Welcome Back':mode==='signup'?'Create Account':mode==='link-account'?'Connect Your Account':'Complete Registration'}</h1>
         <p className="text-white/50 text-xs font-bold uppercase tracking-widest mt-1">{mode==='login'?'Sign in to continue':mode==='signup'?'Join the OBJICC community':mode==='link-account'?'Confirm it\'s really you':'Set up your OBJICC account'}</p>
@@ -204,6 +208,7 @@ export default function AuthForm({initialMode='login'}:{initialMode?:Mode}){
         </>}
         </>)}
       </div>
+    </div>
     </div>
   </div>);
 }

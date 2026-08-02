@@ -67,6 +67,11 @@ export default function ChangePasswordCard(){
         await linkWithCredential(user,credential);
         showToast('Password set! You can now sign in with your email too.','success');
       }
+      // linkWithCredential/updatePassword update auth.currentUser's
+      // providerData in place, but React doesn't know that happened —
+      // re-read it explicitly so the card flips to "Change Password"
+      // immediately instead of waiting for a page refresh.
+      setHasPasswordProvider(!!auth.currentUser?.providerData.some(p=>p.providerId==='password'));
       reset();
     }catch(err:any){
       if(err.code==='auth/wrong-password'||err.code==='auth/invalid-credential')setError('Your current password is incorrect.');

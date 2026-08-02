@@ -22,6 +22,7 @@ const SR:{id:Role;color:string;desc:string}[]=[
 const PL:{key:keyof RolePermissions;label:string;desc:string}[]=[
   {key:'viewAdminDashboard',  label:'Admin Dashboard',      desc:'Access the admin panel'},
   {key:'manageUsers',         label:'Manage Users',         desc:'View, edit and delete users'},
+  {key:'manageProtectedUsers',label:'Manage Protected Users',desc:'Delete or restrict Super Admin & Admin accounts'},
   {key:'manageRoles',         label:'Manage Roles',         desc:'Edit role permissions'},
   {key:'managePosts',         label:'Manage Posts',         desc:'Create, edit and delete posts'},
   {key:'manageMerchandise',   label:'Manage Merchandise',   desc:'Add and edit shop items'},
@@ -142,18 +143,18 @@ export default function RolesPage(){
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {PL.map(({key,label,desc:pd})=>{
                   const on=perms[key];
-                  const isOrderPerm=key==='manageOrders';
+                  const isNewPerm=key==='manageOrders'||key==='manageProtectedUsers';
                   return(
                     <div key={key}
                       onClick={()=>isEdit&&!locked&&setEditPerms(p=>({...p,[key]:!p[key]}))}
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isEdit&&!locked?'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700':''} ${on?'bg-green-50 dark:bg-green-900/20':''} ${isOrderPerm?'ring-1 ring-amber-200 dark:ring-amber-800':''}`}>
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isEdit&&!locked?'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700':''} ${on?'bg-green-50 dark:bg-green-900/20':''} ${isNewPerm?'ring-1 ring-amber-200 dark:ring-amber-800':''}`}>
                       <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-colors ${on?'bg-green-500':'bg-slate-200 dark:bg-slate-600'}`}>
                         {on?<Check className="w-3 h-3 text-white"/>:<X className="w-3 h-3 text-slate-400 dark:text-slate-300"/>}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className={`text-xs font-bold ${on?'text-navy dark:text-white':'text-slate-500 dark:text-slate-400'}`}>{label}</p>
-                          {isOrderPerm&&<span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded text-xs font-black">NEW</span>}
+                          {isNewPerm&&<span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded text-xs font-black">NEW</span>}
                         </div>
                         <p className="text-xs text-slate-400 dark:text-slate-500">{pd}</p>
                       </div>
