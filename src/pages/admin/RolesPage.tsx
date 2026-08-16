@@ -28,6 +28,7 @@ const PL:{key:keyof RolePermissions;label:string;desc:string}[]=[
   {key:'manageMerchandise',   label:'Manage Merchandise',   desc:'Add and edit shop items'},
   {key:'manageRequests',      label:'Manage Requests',      desc:'Handle merch requests'},
   {key:'manageOrders',        label:'Manage Orders',        desc:'Undo orders, restore from recycle bin, empty bin'},
+  {key:'exportOrders',        label:'Export Orders',        desc:'Download a PDF/spreadsheet report of orders for a date range'},
   {key:'manageApplications',  label:'Manage Applications',  desc:'Review enrollment applications'},
   {key:'canViewUserUpdates',  label:'Activity Log',         desc:'See site-wide activity'},
   {key:'printPermissionSlips',label:'Permission Slips',     desc:'Generate printable slips'},
@@ -143,7 +144,7 @@ export default function RolesPage(){
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {PL.map(({key,label,desc:pd})=>{
                   const on=perms[key];
-                  const isNewPerm=key==='manageOrders'||key==='manageProtectedUsers';
+                  const isNewPerm=key==='manageOrders'||key==='manageProtectedUsers'||key==='exportOrders';
                   return(
                     <div key={key}
                       onClick={()=>isEdit&&!locked&&setEditPerms(p=>({...p,[key]:!p[key]}))}

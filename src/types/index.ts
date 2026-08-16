@@ -15,7 +15,8 @@ export interface RolePermissions {
   managePosts:boolean;
   manageMerchandise:boolean;
   manageRequests:boolean;
-  manageOrders:boolean;        // ← NEW: undo/restore orders, manage recycle bin
+  manageOrders:boolean;        // undo/restore orders, manage recycle bin
+  exportOrders:boolean;        // download a PDF/spreadsheet report of orders for a date range
   manageApplications:boolean;
   printPermissionSlips:boolean;
   viewAdminDashboard:boolean;
@@ -26,14 +27,14 @@ export interface RolePermissions {
 const NONE: RolePermissions = {
   manageRoles:false,manageUsers:false,manageProtectedUsers:false,canViewUserUpdates:false,
   managePosts:false,manageMerchandise:false,manageRequests:false,
-  manageOrders:false,manageApplications:false,printPermissionSlips:false,
+  manageOrders:false,exportOrders:false,manageApplications:false,printPermissionSlips:false,
   viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false,
 };
 
 export const DEFAULT_PERMISSIONS: Record<string,RolePermissions> = {
-  super_admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
-  admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
-  staff:{manageRoles:false,manageUsers:true,manageProtectedUsers:false,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
+  super_admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
+  admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
+  staff:{manageRoles:false,manageUsers:true,manageProtectedUsers:false,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,exportOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
   recruitment_officer:{...NONE,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true},
   editor:{...NONE,managePosts:true,viewAdminDashboard:true},
   cadet:{...NONE},parent:{...NONE},pending_cadet:{...NONE},pending_parent:{...NONE},visitor:{...NONE},
@@ -81,7 +82,22 @@ export interface Post {
   category:'Announcements'|'Training'|'Events'; date:string; description:string;
   image?:string; hasPermissionSlip?:boolean; permissionSlipUrl?:string;
   isPrintable?:boolean; allowedRoles?:Role[]; likes?:number; createdAt:any;
+  location?:string; startTime?:string; endTime?:string; meetLocation?:string; meetTime?:string;
+  startDate?:string; endDate?:string; startMode?:'time'|'date'|'both'; endMode?:'time'|'date'|'both';
 }
+export interface PermissionSlipTemplate {
+  salutation:string; bodyTemplate:string; closingName:string; closingTitle:string;
+  closingOrgLine:string; visionLine:string; indemnityText:string; updatedAt?:any;
+}
+export const DEFAULT_SLIP_TEMPLATE:PermissionSlipTemplate={
+  salutation:'Dear Parents/Guardian,',
+  bodyTemplate:'We are pleased to invite your cadet to participate in {project}. This is scheduled for {date}, from {startTime} to {endTime}.\n\nCadets should meet at {meetLocation} at {meetTime}. Please ensure your cadet brings a face rag, change of shirt, bottled water, juice, snacks and spending money.',
+  closingName:'Commander Tracy Box',
+  closingTitle:'Director of Programmes and Training',
+  closingOrgLine:"Ocean Blue Jamaica Int'l Cadet Corps & Operations Ltd.",
+  visionLine:'Empowering Future Generations',
+  indemnityText:'In addition, I indemnify, save harmless and forever discharge the Ocean Blue Jamaica Marine Corps, its employees and agents from and against any claims, demand, actions or cause of action of every nature arising out of this event.',
+};
 export interface PricingOption { label:string; price:string; isActive:boolean; stock?:number; }
 export interface Merchandise {
   id:string; name:string; description?:string; price:string; image?:string;
@@ -101,6 +117,7 @@ export interface MerchRequest {
   items:CartItem[]; totalPrice:string; paymentMethod:'online'|'walk-in';
   paymentStatus:'pending'|'paid'|'canceled'; status:'pending'|'completed'|'canceled';
   deleted?:boolean; deletedAt?:any; requestId?:string; createdAt:any;
+  paymentSubOption?:'walk-in'|'pay-now'|'receipt'; receiptUrl?:string|null; receiptFileName?:string; receiptUploadPending?:boolean;
 }
 export type ToastType = 'success'|'error'|'info'|'warning';
 export interface Toast { id:string; message:string; type:ToastType; }

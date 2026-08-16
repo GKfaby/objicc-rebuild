@@ -16,8 +16,8 @@ export default function NoticeBoard(){
         <Link to="/events" className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-ocean hover:text-navy dark:hover:text-gold transition-colors">View All<ArrowRight className="w-4 h-4"/></Link>
       </div>
       {loading?<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[...Array(3)].map((_,i)=><div key={i} className="bg-slate-50 dark:bg-slate-800 rounded-2xl h-52 animate-pulse"/>)}</div>
-      :<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{posts.map(p=>(
-        <article key={p.id} className="group bg-slate-50 dark:bg-slate-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all">
+      :<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{posts.map(p=>{
+        const card=(<>
           {p.image?<div className="aspect-video overflow-hidden"><img src={p.image} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/></div>:<div className="aspect-video bg-gradient-to-br from-navy to-ocean flex items-center justify-center"><Calendar className="w-10 h-10 text-white/20"/></div>}
           <div className="p-5">
             <div className="flex gap-2 mb-2"><span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase ${p.type==='event'?'bg-gold/20 text-amber-700 dark:text-amber-400':'bg-ocean/10 text-ocean'}`}>{p.type}</span></div>
@@ -25,8 +25,13 @@ export default function NoticeBoard(){
             <p className="text-xs text-slate-400 mb-2">{p.date}</p>
             <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2 leading-relaxed">{p.description}</p>
           </div>
-        </article>
-      ))}</div>}
+        </>);
+        return p.type==='event'?(
+          <Link key={p.id} to={`/events?id=${p.id}`} className="group bg-slate-50 dark:bg-slate-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all block">{card}</Link>
+        ):(
+          <article key={p.id} className="group bg-slate-50 dark:bg-slate-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all">{card}</article>
+        );
+      })}</div>}
     </div>
   </section>);
 }

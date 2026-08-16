@@ -1,7 +1,7 @@
 import{useState,useEffect} from 'react';
 import{collection,onSnapshot,doc,updateDoc,query,orderBy,serverTimestamp,where,writeBatch,getDocs} from 'firebase/firestore';
 import{db} from '../../firebase';
-import{ShoppingBag,Eye,X,Check,Package,Clock,XCircle,Search,Trash2,RefreshCw,RotateCcw,AlertTriangle} from 'lucide-react';
+import{ShoppingBag,Eye,X,Check,Package,Clock,XCircle,Search,Trash2,RefreshCw,RotateCcw,AlertTriangle,Download,FileText,FileSpreadsheet} from 'lucide-react';
 import{useToast} from '../../contexts/ToastContext';
 import{useUser} from '../../contexts/UserContext';
 import type{MerchRequest,CartItem} from '../../types';
@@ -26,9 +26,18 @@ export default function OrdersPage(){
   const[filter,setFilter]=useState<'all'|'pending'|'completed'|'canceled'>('all');
   const[tab,setTab]=useState<'orders'|'trash'>('orders');
   const[showEmptyConfirm,setShowEmptyConfirm]=useState(false);
+  const[showExport,setShowExport]=useState(false);
+  const[exportRangeType,setExportRangeType]=useState<'month'|'year'|'custom'>('month');
+  const now=new Date();
+  const[exportMonth,setExportMonth]=useState(now.getMonth());
+  const[exportYear,setExportYear]=useState(now.getFullYear());
+  const[exportStart,setExportStart]=useState('');
+  const[exportEnd,setExportEnd]=useState('');
+  const[exportFormat,setExportFormat]=useState<'pdf'|'csv'>('pdf');
   const{showToast}=useToast();
-  const{permissions}=useUser();
+  const{permissions,systemSettings}=useUser();
   const canManage=permissions.manageOrders;
+  const canExport=permissions.exportOrders;
 
   // Active orders
   useEffect(()=>{
@@ -72,7 +81,7 @@ export default function OrdersPage(){
   // ── manageOrders-only actions ────────────────────────────────────────────
   const undoComplete=async(o:MerchRequest)=>{
     if(!canManage)return;
-    await upd(o.id,{status:'pending',paymentStatus:'pending'});showToast('Order fully reset to pending','info');
+    await upd(o.id,{status:'pending'});showToast('Order restored to pending','info');
   };
   const restoreFromTrash=async(o:MerchRequest)=>{
     if(!canManage)return;
@@ -91,6 +100,110 @@ export default function OrdersPage(){
 
   const counts={all:orders.length,pending:orders.filter(o=>o.status==='pending').length,completed:orders.filter(o=>o.status==='completed').length,canceled:orders.filter(o=>o.status==='canceled').length};
   const pendingVal=orders.filter(o=>o.status==='pending').reduce((s,o)=>s+(parseFloat(o.totalPrice?.replace(/[^0-9.]/g,''))||0),0);
+
+  // ── Export (exportOrders permission only) ────────────────────────────────
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const yearOptions=Array.from({length:6},(_,i)=>now.getFullYear()-i);
+
+  const getExportRange=():{start:Date;end:Date;label:string}|null=>{
+    if(exportRangeType==='month'){
+      const start=new Date(exportYear,exportMonth,1,0,0,0);
+      const end=new Date(exportYear,exportMonth+1,0,23,59,59);
+      return{start,end,label:`${MONTHS[exportMonth]} ${exportYear}`};
+    }
+    if(exportRangeType==='year'){
+      const start=new Date(exportYear,0,1,0,0,0);
+      const end=new Date(exportYear,11,31,23,59,59);
+      return{start,end,label:`${exportYear}`};
+    }
+    if(!exportStart||!exportEnd)return null;
+    const start=new Date(exportStart+'T00:00:00');
+    const end=new Date(exportEnd+'T23:59:59');
+    if(end<start)return null;
+    return{start,end,label:`${start.toLocaleDateString()} – ${end.toLocaleDateString()}`};
+  };
+
+  const getOrdersInRange=(start:Date,end:Date)=>orders
+    .filter(o=>{const d=o.createdAt?.toDate?.();return d&&d>=start&&d<=end;})
+    .sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));
+
+  const itemsSummary=(items:CartItem[])=>items?.map(i=>`${i.name}${i.selectedSize?` (${i.selectedSize})`:''} x${i.quantity}`).join(', ')||'';
+
+  const exportPDF=(list:MerchRequest[],label:string)=>{
+    const revenue=list.filter(o=>o.paymentStatus==='paid').reduce((s,o)=>s+(parseFloat(o.totalPrice?.replace(/[^0-9.]/g,''))||0),0);
+    const win=window.open('','_blank','width=1000,height=700');if(!win)return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Orders Report — ${label}</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;font-size:10pt;color:#000;background:#fff;padding:24px}
+      .header{border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end}
+      .org{font-size:16pt;font-weight:900;text-transform:uppercase}
+      .title{font-size:12pt;font-weight:900;text-transform:uppercase;margin-top:4px}
+      .meta{text-align:right;font-size:8pt;color:#555}
+      table{width:100%;border-collapse:collapse;margin-top:8px}
+      th{background:#f0f0f0;text-align:left;padding:6px 8px;font-size:8pt;text-transform:uppercase;border-bottom:2px solid #000}
+      td{padding:6px 8px;font-size:8.5pt;border-bottom:1px solid #ddd;vertical-align:top}
+      .num{text-align:right}
+      .summary{margin-top:16px;padding:12px;background:#f5f5f5;border-left:4px solid #000;font-size:9pt}
+      .summary b{font-size:11pt}
+      .footer{text-align:center;font-size:7.5pt;color:#777;margin-top:20px;padding-top:10px;border-top:1px solid #ccc}
+      @media print{body{print-color-adjust:exact}}
+    </style></head><body>
+      <div class="header">
+        <div><div class="org">${systemSettings?.orgName||'OBJICC'}</div><div class="title">Orders Report</div></div>
+        <div class="meta">Period: <b>${label}</b><br/>Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      <table><thead><tr>
+        <th>Order ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+      </tr></thead><tbody>
+        ${list.map(o=>`<tr>
+          <td>${o.requestId||o.id.slice(0,8).toUpperCase()}</td>
+          <td>${o.createdAt?.toDate?.().toLocaleDateString()||''}</td>
+          <td>${o.requesterName||''}${o.phone?`<br/><span style="color:#777">${o.phone}</span>`:''}</td>
+          <td>${itemsSummary(o.items)}</td>
+          <td>${o.paymentMethod||''} — ${o.paymentStatus||''}</td>
+          <td>${o.status||''}</td>
+          <td class="num">${o.totalPrice||''}</td>
+        </tr>`).join('')}
+      </tbody></table>
+      <div class="summary">
+        <div><b>${list.length}</b> order${list.length===1?'':'s'} in this period</div>
+        <div>Revenue collected (paid orders): <b>JMD $${revenue.toFixed(2)}</b></div>
+      </div>
+      <div class="footer">${systemSettings?.orgName||'OBJICC'} — Orders Report — ${label}</div>
+    </body></html>`);
+    win.document.close();win.focus();setTimeout(()=>win.print(),300);
+  };
+
+  const exportCSV=(list:MerchRequest[],label:string)=>{
+    const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;
+    const rows=[
+      ['Order ID','Date','Customer','Phone','Items','Payment Method','Payment Status','Order Status','Total'],
+      ...list.map(o=>[
+        o.requestId||o.id.slice(0,8).toUpperCase(),
+        o.createdAt?.toDate?.().toLocaleDateString()||'',
+        o.requesterName||'',o.phone||'',
+        itemsSummary(o.items),
+        o.paymentMethod||'',o.paymentStatus||'',o.status||'',
+        o.totalPrice||'',
+      ]),
+    ];
+    const csv=rows.map(r=>r.map(esc).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`orders-${label.replace(/\s+/g,'-').replace(/[^\w-]/g,'')}.csv`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const runExport=()=>{
+    const range=getExportRange();
+    if(!range){showToast('Please select a valid date range.','error');return;}
+    const list=getOrdersInRange(range.start,range.end);
+    if(list.length===0){showToast('No orders found in that period.','info');return;}
+    if(exportFormat==='pdf')exportPDF(list,range.label);else exportCSV(list,range.label);
+    setShowExport(false);
+  };
 
   const OrderDetailModal=({order,onClose}:{order:MerchRequest;onClose:()=>void})=>(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm">
@@ -115,7 +228,7 @@ export default function OrdersPage(){
               {order.items?.map((item:CartItem,i:number)=>(
                 <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   {item.image&&<img src={item.image} className="w-10 h-10 rounded-lg object-cover shrink-0" alt=""/>}
-                  <div className="flex-1 min-w-0"><p className="font-bold text-navy dark:text-white text-sm truncate">{item.name}</p>{item.selectedSize&&<p className="text-xs text-slate-400">{item.selectedSize}</p>}<p className="text-xs text-slate-400">Qty: {item.quantity}</p></div>
+                  <div className="flex-1 min-w-0"><p className="font-bold text-navy dark:text-white text-sm truncate">{item.name}</p><p className="text-xs text-slate-400">Qty: {item.quantity}</p></div>
                   <span className="font-black text-navy dark:text-white text-sm">{item.price}</span>
                 </div>
               ))}
@@ -136,7 +249,7 @@ export default function OrdersPage(){
           </>}
           {/* manageOrders-only: undo complete */}
           {canManage&&order.status==='completed'&&(
-            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Complete → Reset to Pending</button>
+            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Complete → Pending</button>
           )}
           <button onClick={()=>{softDelete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-black rounded-xl text-xs uppercase tracking-widest"><Trash2 className="w-4 h-4"/>Move to Recycle Bin</button>
         </div>
@@ -152,11 +265,18 @@ export default function OrdersPage(){
           <h1 className="text-2xl font-black text-navy dark:text-white uppercase tracking-tight">Orders</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{counts.pending} pending · JMD ${pendingVal.toFixed(2)} outstanding</p>
         </div>
-        {canManage&&tab==='trash'&&trash.length>0&&(
-          <button onClick={()=>setShowEmptyConfirm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">
-            <Trash2 className="w-4 h-4"/>Empty Recycle Bin ({trash.length})
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canExport&&(
+            <button onClick={()=>setShowExport(true)} className="flex items-center gap-2 px-4 py-2.5 bg-navy hover:bg-ocean text-white rounded-xl text-xs font-black uppercase tracking-widest">
+              <Download className="w-4 h-4"/>Export Orders
+            </button>
+          )}
+          {canManage&&tab==='trash'&&trash.length>0&&(
+            <button onClick={()=>setShowEmptyConfirm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+              <Trash2 className="w-4 h-4"/>Empty Recycle Bin ({trash.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -265,6 +385,73 @@ export default function OrdersPage(){
             <div className="flex gap-3">
               <button onClick={()=>setShowEmptyConfirm(false)} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button>
               <button onClick={emptyTrash} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-xs uppercase tracking-widest">Delete All</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Export Orders modal (exportOrders permission only) */}
+      {showExport&&canExport&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" onClick={()=>setShowExport(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-2"><Download className="w-4 h-4 text-navy dark:text-gold"/><h2 className="font-black text-navy dark:text-white">Export Orders</h2></div>
+              <button onClick={()=>setShowExport(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-4 h-4 text-slate-400"/></button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Time Period</p>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {(['month','year','custom'] as const).map(t=>(
+                    <button key={t} onClick={()=>setExportRangeType(t)}
+                      className={`py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${exportRangeType===t?'bg-navy text-white dark:bg-gold dark:text-navy':'bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                      {t==='month'?'Month':t==='year'?'Year':'Custom'}
+                    </button>
+                  ))}
+                </div>
+
+                {exportRangeType==='month'&&<div className="grid grid-cols-2 gap-2">
+                  <select value={exportMonth} onChange={e=>setExportMonth(Number(e.target.value))} className="px-3 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold text-navy dark:text-white outline-none border border-slate-200 dark:border-slate-600">
+                    {MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}
+                  </select>
+                  <select value={exportYear} onChange={e=>setExportYear(Number(e.target.value))} className="px-3 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold text-navy dark:text-white outline-none border border-slate-200 dark:border-slate-600">
+                    {yearOptions.map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>}
+
+                {exportRangeType==='year'&&<select value={exportYear} onChange={e=>setExportYear(Number(e.target.value))} className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold text-navy dark:text-white outline-none border border-slate-200 dark:border-slate-600">
+                  {yearOptions.map(y=><option key={y} value={y}>{y}</option>)}
+                </select>}
+
+                {exportRangeType==='custom'&&<div className="space-y-2">
+                  <p className="text-xs text-slate-400">Pick any range — a week, a few days, whatever you need.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">From</label>
+                      <input type="date" value={exportStart} onChange={e=>setExportStart(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold text-navy dark:text-white outline-none border border-slate-200 dark:border-slate-600"/>
+                    </div>
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">To</label>
+                      <input type="date" value={exportEnd} onChange={e=>setExportEnd(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold text-navy dark:text-white outline-none border border-slate-200 dark:border-slate-600"/>
+                    </div>
+                  </div>
+                </div>}
+              </div>
+
+              <div>
+                <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Format</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={()=>setExportFormat('pdf')} className={`flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all ${exportFormat==='pdf'?'border-navy dark:border-gold bg-navy/5 dark:bg-gold/10':'border-slate-100 dark:border-slate-700'}`}>
+                    <FileText className={`w-4 h-4 shrink-0 ${exportFormat==='pdf'?'text-navy dark:text-gold':'text-slate-400'}`}/>
+                    <div><p className={`text-sm font-black ${exportFormat==='pdf'?'text-navy dark:text-white':'text-slate-500 dark:text-slate-400'}`}>PDF</p><p className="text-xs text-slate-400">Print or save as PDF</p></div>
+                  </button>
+                  <button onClick={()=>setExportFormat('csv')} className={`flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all ${exportFormat==='csv'?'border-navy dark:border-gold bg-navy/5 dark:bg-gold/10':'border-slate-100 dark:border-slate-700'}`}>
+                    <FileSpreadsheet className={`w-4 h-4 shrink-0 ${exportFormat==='csv'?'text-navy dark:text-gold':'text-slate-400'}`}/>
+                    <div><p className={`text-sm font-black ${exportFormat==='csv'?'text-navy dark:text-white':'text-slate-500 dark:text-slate-400'}`}>Spreadsheet</p><p className="text-xs text-slate-400">CSV — opens in Excel/Sheets</p></div>
+                  </button>
+                </div>
+              </div>
+
+              <button onClick={runExport} className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                <Download className="w-4 h-4"/>{exportFormat==='pdf'?'Generate PDF':'Download Spreadsheet'}
+              </button>
             </div>
           </div>
         </div>

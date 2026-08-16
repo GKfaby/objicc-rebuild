@@ -1,13 +1,18 @@
 import{useState,useEffect} from 'react';
 import{collection,query,where,onSnapshot,addDoc,serverTimestamp} from 'firebase/firestore';
-import{db} from '../firebase';
-import{ShoppingBag,Plus,Minus,Trash2,ShoppingCart,X,Check,PackageX,Store,CreditCard} from 'lucide-react';
+import{ref,uploadBytes,getDownloadURL} from 'firebase/storage';
+import{db,storage} from '../firebase';
+import{ShoppingBag,Plus,Minus,Trash2,ShoppingCart,X,Check,PackageX,Store,CreditCard,Upload,FileText,Clock,ArrowLeft,Paperclip} from 'lucide-react';
 import{useUser} from '../contexts/UserContext';
 import{useToast} from '../contexts/ToastContext';
 import type{Merchandise,CartItem,PricingOption} from '../types';
 
 const priceNum=(p:string)=>parseFloat(p.replace(/[^0-9.]/g,''))||0;
 const lineKey=(id:string,size?:string)=>`${id}__${size||'base'}`;
+// Covers phone camera photos (JPEG/HEIC on iPhone, JPEG/PNG on Android),
+// screenshots, and scanned/exported PDFs.
+const RECEIPT_ACCEPT='.jpg,.jpeg,.png,.heic,.heif,.webp,.pdf,image/jpeg,image/png,image/heic,image/heif,image/webp,application/pdf';
+const RECEIPT_MAX_MB=15;
 
 export default function ShopPage(){
   const[items,setItems]=useState<Merchandise[]>([]);
@@ -17,6 +22,9 @@ export default function ShopPage(){
   const[detailVariant,setDetailVariant]=useState<PricingOption|null>(null);
   const[detailQty,setDetailQty]=useState(1);
   const[paymentMethod,setPaymentMethod]=useState<"online"|"walk-in"|null>(null);
+  const[onlineStep,setOnlineStep]=useState<'closed'|'choice'|'pay-now'|'receipt'>('closed');
+  const[receiptFile,setReceiptFile]=useState<File|null>(null);
+  const[uploadingReceipt,setUploadingReceipt]=useState(false);
   const[submitting,setSubmitting]=useState(false);
   const[orderSuccess,setOrderSuccess]=useState(false);
   const{cart,setCart,profile}=useUser();
@@ -58,11 +66,59 @@ export default function ShopPage(){
   const totalItems=cart.reduce((s,c)=>s+c.quantity,0);
   const totalPrice=()=>{const sum=cart.reduce((s,c)=>s+priceNum(c.price)*c.quantity,0);return`JMD $${sum.toFixed(2)}`;};
 
-  const submitOrder=async()=>{if(!profile||!cart.length||!paymentMethod){showToast('Please select how you\'ll pay.','error');return;}setSubmitting(true);
+  const finalizeOrder=async(extra:Record<string,any> ={})=>{
+    if(!profile||!cart.length)return;setSubmitting(true);
     try{const requestId=`ORD-${Date.now().toString(36).toUpperCase()}`;
-      await addDoc(collection(db,'merch_requests'),{userUid:profile.uid,requesterName:profile.displayName,cadetName:profile.cadetName||profile.displayName,phone:profile.phone,items:cart,totalPrice:totalPrice(),paymentMethod,paymentStatus:'pending',status:'pending',requestId,createdAt:serverTimestamp()});
-      setCart([]);setOrderSuccess(true);setPaymentMethod(null);showToast('Order submitted!','success');
-    }catch{showToast('Failed to submit order.','error');}finally{setSubmitting(false);}};
+      await addDoc(collection(db,'merch_requests'),{userUid:profile.uid,requesterName:profile.displayName,cadetName:profile.cadetName||profile.displayName,phone:profile.phone,items:cart,totalPrice:totalPrice(),paymentMethod,paymentStatus:'pending',status:'pending',requestId,createdAt:serverTimestamp(),...extra});
+      setCart([]);setOrderSuccess(true);setPaymentMethod(null);setOnlineStep('closed');setReceiptFile(null);showToast('Order submitted!','success');
+    }catch{showToast('Failed to submit order.','error');}finally{setSubmitting(false);}
+  };
+
+  const submitOrder=()=>{
+    if(!profile||!cart.length)return;
+    if(!paymentMethod){showToast('Please select how you\'ll pay.','error');return;}
+    if(paymentMethod==='walk-in'){finalizeOrder({paymentSubOption:'walk-in'});return;}
+    // Online chosen -- don't submit yet, let them pick Pay Now vs Submit Receipt first
+    setOnlineStep('choice');
+  };
+
+  const validateReceiptFile=(f:File):string|null=>{
+    const okType=/\.(jpe?g|png|heic|heif|webp|pdf)$/i.test(f.name)||['image/jpeg','image/png','image/heic','image/heif','image/webp','application/pdf'].includes(f.type);
+    if(!okType)return'Please upload a photo (JPG, PNG, HEIC, WEBP) or a PDF.';
+    if(f.size>RECEIPT_MAX_MB*1024*1024)return`File is too large -- please keep it under ${RECEIPT_MAX_MB}MB.`;
+    return null;
+  };
+
+  const onReceiptSelected=(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0];if(!f)return;
+    const err=validateReceiptFile(f);
+    if(err){showToast(err,'error');e.target.value='';return;}
+    setReceiptFile(f);
+  };
+
+  const submitReceipt=async()=>{
+    if(!receiptFile||!profile)return;
+    setUploadingReceipt(true);
+    try{
+      // Placeholder-safe: Firebase Storage isn't provisioned on this
+      // project yet (billing/Storage setup is planned for later). Once
+      // it is, this upload will just start working with no code changes
+      // needed. Until then, we catch the failure and still submit the
+      // order so nothing blocks the member -- just flagged for staff to
+      // follow up on the receipt manually.
+      let receiptUrl:string|null=null;
+      try{
+        const path=`receipts/${profile.uid}/${Date.now()}-${receiptFile.name}`;
+        const fileRef=ref(storage,path);
+        await uploadBytes(fileRef,receiptFile);
+        receiptUrl=await getDownloadURL(fileRef);
+      }catch(uploadErr){
+        console.warn('Receipt upload unavailable (Storage not yet configured):',uploadErr);
+        showToast("Order submitted, but we couldn't upload your receipt right now -- please bring a copy to the office.",'info');
+      }
+      await finalizeOrder({paymentSubOption:'receipt',receiptUrl,receiptFileName:receiptFile.name,receiptUploadPending:!receiptUrl});
+    }finally{setUploadingReceipt(false);}
+  };
 
   const activeOpts=(detailItem?.pricingOptions||[]).filter(o=>o.isActive);
   const detailPrice=detailVariant?detailVariant.price:detailItem?.price||'';
@@ -215,11 +271,68 @@ export default function ShopPage(){
             </div>
             <button onClick={submitOrder} disabled={submitting||!paymentMethod} title={!paymentMethod?'Select a payment method first':''}
               className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitting?<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Check className="w-4 h-4"/>}Confirm Order
+              {submitting?<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Check className="w-4 h-4"/>}
+              {paymentMethod==='online'?'Continue':'Confirm Order'}
             </button>
           </div>}
         </>}
       </div>
     </>}
+
+    {/* Online payment sub-flow: choose Pay Now vs Submit Receipt */}
+    {onlineStep!=='closed'&&<div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm" onClick={()=>{setOnlineStep('closed');setReceiptFile(null);}}>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            {onlineStep!=='choice'&&<button onClick={()=>setOnlineStep('choice')} className="p-1 -ml-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><ArrowLeft className="w-4 h-4 text-slate-400"/></button>}
+            <h2 className="font-black text-navy dark:text-white">{onlineStep==='choice'?'Online Payment':onlineStep==='pay-now'?'Pay Now':'Submit Receipt'}</h2>
+          </div>
+          <button onClick={()=>{setOnlineStep('closed');setReceiptFile(null);}} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-4 h-4 text-slate-400"/></button>
+        </div>
+
+        {onlineStep==='choice'&&<div className="p-6 space-y-3">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">How would you like to complete your online payment?</p>
+          <button onClick={()=>setOnlineStep('pay-now')} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-navy/40 dark:hover:border-gold/40 text-left transition-all">
+            <div className="w-10 h-10 rounded-xl bg-navy/10 dark:bg-gold/10 flex items-center justify-center shrink-0"><CreditCard className="w-5 h-5 text-navy dark:text-gold"/></div>
+            <div className="min-w-0 flex-1"><p className="font-black text-navy dark:text-white text-sm">Pay Now</p><p className="text-xs text-slate-400">Complete your payment online right now</p></div>
+          </button>
+          <button onClick={()=>setOnlineStep('receipt')} className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-navy/40 dark:hover:border-gold/40 text-left transition-all">
+            <div className="w-10 h-10 rounded-xl bg-navy/10 dark:bg-gold/10 flex items-center justify-center shrink-0"><Upload className="w-5 h-5 text-navy dark:text-gold"/></div>
+            <div className="min-w-0 flex-1"><p className="font-black text-navy dark:text-white text-sm">Submit Receipt</p><p className="text-xs text-slate-400">Already paid? Upload a photo or PDF of your receipt</p></div>
+          </button>
+        </div>}
+
+        {onlineStep==='pay-now'&&<div className="p-6 text-center">
+          <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4"><Clock className="w-8 h-8 text-amber-500"/></div>
+          <h3 className="font-black text-navy dark:text-white text-lg mb-2">Online Payments Coming Soon</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">We're still finalizing online checkout. In the meantime, you can submit a receipt if you've already paid, or choose Walk-in from the previous screen to pay at the office.</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={()=>setOnlineStep('receipt')} className="w-full py-3 bg-navy text-white font-black rounded-xl text-xs uppercase tracking-widest hover:bg-ocean transition-colors">Submit a Receipt Instead</button>
+            <button onClick={()=>{setOnlineStep('closed');setPaymentMethod('walk-in');}} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-navy dark:text-white font-black rounded-xl text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Switch to Walk-in</button>
+          </div>
+        </div>}
+
+        {onlineStep==='receipt'&&<div className="p-6">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Already made your payment? Upload a photo of your receipt (a phone picture is fine) or a PDF, and we'll confirm it on our end.</p>
+          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-8 px-4 cursor-pointer transition-colors ${receiptFile?'border-navy/40 dark:border-gold/40 bg-navy/5 dark:bg-gold/5':'border-slate-200 dark:border-slate-700 hover:border-navy/30 dark:hover:border-gold/30'}`}>
+            <input type="file" accept={RECEIPT_ACCEPT} onChange={onReceiptSelected} className="hidden"/>
+            {receiptFile?<>
+              <Paperclip className="w-6 h-6 text-navy dark:text-gold"/>
+              <p className="text-sm font-bold text-navy dark:text-white text-center px-4 truncate max-w-full">{receiptFile.name}</p>
+              <p className="text-xs text-slate-400">{(receiptFile.size/1024/1024).toFixed(1)} MB — tap to change</p>
+            </>:<>
+              <FileText className="w-8 h-8 text-slate-300"/>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Tap to choose a photo or PDF</p>
+              <p className="text-xs text-slate-400">JPG, PNG, HEIC, WEBP, or PDF — up to {RECEIPT_MAX_MB}MB</p>
+            </>}
+          </label>
+          <button onClick={submitReceipt} disabled={!receiptFile||uploadingReceipt}
+            className="w-full mt-4 py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {uploadingReceipt?<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:<Check className="w-4 h-4"/>}
+            {uploadingReceipt?'Submitting…':'Submit Receipt'}
+          </button>
+        </div>}
+      </div>
+    </div>}
   </div>);
 }
