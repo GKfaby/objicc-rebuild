@@ -18,6 +18,18 @@ service cloud.firestore {
       let roleDoc = get(/databases/$(database)/documents/roles/$(myRole()));
       return roleDoc.exists && roleDoc.data.permissions[perm] == true;
     }
+    // A "protected" account (Super Admin / Admin) can only be touched --
+    // deleted, banned, or have its role changed -- by an admin-tier user,
+    // or by a role explicitly granted manageProtectedUsers. This also
+    // blocks promoting a non-protected user INTO a protected role, not
+    // just editing an already-protected one.
+    function targetIsOrBecomesProtected() {
+      return resource.data.role in ['super_admin','admin'] ||
+        (request.resource != null && request.resource.data.role in ['super_admin','admin']);
+    }
+    function canManageThisUser() {
+      return isAdmin() || (hasPermission('manageUsers') && (!targetIsOrBecomesProtected() || hasPermission('manageProtectedUsers')));
+    }
 
     // Users
     match /users/{uid} {
@@ -25,11 +37,14 @@ service cloud.firestore {
         (isSignedIn() && resource.data.role in
           ['super_admin','admin','staff','recruitment_officer','editor']);
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isStaff();
-      allow delete: if isAdmin();
+      // A banned user can't modify their own doc (e.g. un-banning
+      // themselves) -- staff with manageUsers can, subject to the
+      // protected-account check above.
+      allow update: if (isOwner(uid) && resource.data.banned!=true) || canManageThisUser();
+      allow delete: if canManageThisUser();
 
       match /notifications/{notifId} {
-        allow read, update, delete: if isOwner(uid);
+        allow read, update, delete: if isOwner(uid) || isStaff();
         allow create: if isSignedIn();
       }
     }
@@ -37,7 +52,7 @@ service cloud.firestore {
     // Roles
     match /roles/{roleId} {
       allow read: if true;
-      allow write: if isSuperAdmin();
+      allow write: if isSuperAdmin() || (isStaff() && hasPermission('manageRoles'));
     }
 
     // System config
@@ -118,8 +133,12 @@ service cloud.firestore {
           (request.auth.uid in
             get(/databases/$(database)/documents/conversations/$(convId)).data.participants
             || isStaff());
-        allow update: if isSignedIn();
-        allow delete: if isAdmin();
+        allow update: if isSignedIn() &&
+          (request.auth.uid in
+            get(/databases/$(database)/documents/conversations/$(convId)).data.participants
+            || isStaff());
+        allow delete: if isSignedIn() &&
+          (resource.data.senderId==request.auth.uid || isStaff());
       }
     }
 
@@ -131,11 +150,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Permission Slips — the finalized slip (form data + signature) saved
+    // Permission Slips -- the finalized slip (form data + signature) saved
     // per event, so members can view/download it from the Events page.
     match /permissionSlips/{postId} {
       allow read: if isSignedIn();
-      allow write: if isStaff() && hasPermission('printPermissionSlips');
+      allow write: if isAdmin() || (isStaff() && hasPermission('printPermissionSlips'));
     }
   }
 }
