@@ -129,7 +129,7 @@ export default function ShopPage(){
   return(<div className="min-h-screen pt-28 pb-16 bg-slate-50 dark:bg-darkbg">
     <div className="container mx-auto px-4"><div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-10">
-        <div><h1 className="text-4xl font-black text-navy dark:text-white uppercase tracking-tight mb-2">Shop</h1><p className="text-slate-500">OBJICC merchandise — available to members.</p></div>
+        <div><h1 className="text-4xl font-black text-navy dark:text-white uppercase tracking-tight mb-2">Cadet Shop</h1><p className="text-slate-500">OBJICC cadet uniforms and equipment — available to members only.</p></div>
         <button onClick={()=>setCartOpen(true)} className="relative flex items-center gap-2 px-5 py-3 bg-navy text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-ocean transition-colors">
           <ShoppingCart className="w-4 h-4"/>Cart
           {totalItems>0&&<span className="absolute -top-2 -right-2 w-5 h-5 bg-gold text-navy rounded-full text-xs font-black flex items-center justify-center">{totalItems}</span>}

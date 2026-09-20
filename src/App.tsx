@@ -25,6 +25,7 @@ import PendingPage from './pages/PendingPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import ShopPage from './pages/ShopPage';
+import PublicShopPage from './pages/PublicShopPage';
 import SuggestionsPage from './pages/SuggestionsPage';
 import MessagesPage from './pages/MessagesPage';
 import{NotFoundPage,UnauthorizedPage} from './pages/ErrorPages';
@@ -133,6 +134,7 @@ export default function App(){
           <Route path="/notifications" element={<AuthenticatedOnly><PublicLayout><NotificationsPage/></PublicLayout></AuthenticatedOnly>}/>
           <Route path="/messages" element={<AuthenticatedOnly><PublicLayout><MessagesPage/></PublicLayout></AuthenticatedOnly>}/>
           <Route path="/shop" element={<MemberOnly><PublicLayout><ShopPage/></PublicLayout></MemberOnly>}/>
+          <Route path="/ocean-blue-ja-stores" element={<PublicLayout><PublicShopPage/></PublicLayout>}/>
           <Route path="/suggestions" element={<MemberOnly><PublicLayout><SuggestionsPage/></PublicLayout></MemberOnly>}/>
 
           <Route path="/admin" element={<StaffOnly><AdminLayout/></StaffOnly>}>

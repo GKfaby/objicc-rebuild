@@ -1,0 +1,5 @@
+- `[x]` Create PublicShopPage.tsx
+- `[x]` Update ShopPage.tsx (rename to Cadet Shop)
+- `[x]` Update App.tsx (add route)
+- `[x]` Update HomePage.tsx (add link/button)
+- `[x]` Update MerchandisePage.tsx (add tabs to toggle between stores)

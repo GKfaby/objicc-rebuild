@@ -1,5 +1,5 @@
 import{Link} from 'react-router-dom';
-import{ArrowRight,Shield,Users,Star,ChevronDown} from 'lucide-react';
+import{ArrowRight,Shield,Users,Star,ChevronDown,ShoppingBag} from 'lucide-react';
 import{useUser} from '../contexts/UserContext';
 import NoticeBoard from '../components/features/NoticeBoard';
 export default function HomePage(){
@@ -62,6 +62,17 @@ export default function HomePage(){
           <Link to="/contact" className="px-8 py-4 bg-gold text-navy font-black rounded-full hover:bg-white transition-all uppercase tracking-widest text-sm">Get in Touch</Link>
           {!firebaseUser&&<Link to="/signup" className="px-8 py-4 bg-white/10 border border-white/20 text-white font-black rounded-full hover:bg-white/20 transition-all uppercase tracking-widest text-sm">Apply to Join</Link>}
         </div>
+      </div>
+    <section className="py-20 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+      <div className="container mx-auto px-4 text-center max-w-3xl">
+        <div className="w-16 h-16 bg-ocean/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <ShoppingBag className="w-8 h-8 text-ocean"/>
+        </div>
+        <h2 className="text-3xl md:text-4xl font-black text-navy dark:text-white uppercase tracking-tight mb-4">Ocean Blue JA Stores</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed mb-10">Check out our exclusive merchandise! From custom gift baskets to t-shirt prints, our store is open to everyone. Support us by grabbing something special today.</p>
+        <Link to="/ocean-blue-ja-stores" className="inline-flex items-center gap-2 px-8 py-4 bg-ocean text-white font-black rounded-full hover:bg-navy transition-all uppercase tracking-widest text-sm shadow-lg shadow-ocean/20 group">
+          <ShoppingBag className="w-4 h-4"/> Go to Store <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
+        </Link>
       </div>
     </section>
   </div>);
