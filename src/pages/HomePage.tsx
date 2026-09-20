@@ -63,6 +63,7 @@ export default function HomePage(){
           {!firebaseUser&&<Link to="/signup" className="px-8 py-4 bg-white/10 border border-white/20 text-white font-black rounded-full hover:bg-white/20 transition-all uppercase tracking-widest text-sm">Apply to Join</Link>}
         </div>
       </div>
+    </section>
     <section className="py-20 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
       <div className="container mx-auto px-4 text-center max-w-3xl">
         <div className="w-16 h-16 bg-ocean/10 rounded-2xl flex items-center justify-center mx-auto mb-6">

@@ -32,8 +32,9 @@ export default function Navbar(){
     {label:'Home',href:'/'},
     {label:'Events',href:'/events',show:systemSettings.eventsEnabled},
     {label:'Contact',href:'/contact'},
+    {label:'OBJ Stores',href:'/ocean-blue-ja-stores'},
     ...(isMember?[
-      {label:'Shop',href:'/shop',show:systemSettings.shopEnabled},
+      {label:'Cadet Shop',href:'/shop',show:systemSettings.shopEnabled},
       {label:'Suggestions',href:'/suggestions',show:systemSettings.suggestionsEnabled},
     ]:[]),
     ...((isMember||isPending)?[{label:'Messages',href:'/messages'}]:[]),
