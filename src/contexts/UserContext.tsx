@@ -2,19 +2,20 @@ import React,{createContext,useContext,useEffect,useState,useCallback} from 'rea
 import{auth,db} from '../firebase';
 import{onAuthStateChanged,signOut} from 'firebase/auth';
 import{doc,onSnapshot,getDoc,setDoc,collection,serverTimestamp} from 'firebase/firestore';
-import{Role,UserProfile,RolePermissions,SystemSettings,DEFAULT_PERMISSIONS,DEFAULT_SYSTEM_SETTINGS,CartItem} from '../types';
+import{Role,UserProfile,RolePermissions,SystemSettings,DEFAULT_PERMISSIONS,DEFAULT_SYSTEM_SETTINGS,CartItem,RoleHierarchy,DEFAULT_HIERARCHY} from '../types';
 import{JAMAICAN_SCHOOLS} from '../constants';
 
 interface UserContextType{
   firebaseUser:any;profile:UserProfile|null;permissions:RolePermissions;loading:boolean;
   isStaff:boolean;isMember:boolean;isPending:boolean;
-  canAccess:(r:Role|Role[])=>boolean;refreshProfile:()=>Promise<void>;
+  canAccess:(r:string|string[])=>boolean;refreshProfile:()=>Promise<void>;
   cart:CartItem[];setCart:React.Dispatch<React.SetStateAction<CartItem[]>>;
   schools:string[];systemSettings:SystemSettings;needsProfileCompletion:boolean;
   emailVerified:boolean;refreshEmailVerified:()=>Promise<boolean>;
+  hierarchy:RoleHierarchy;
 }
 const Ctx=createContext<UserContextType|undefined>(undefined);
-const NONE:RolePermissions={manageRoles:false,manageUsers:false,canViewUserUpdates:false,managePosts:false,manageMerchandise:false,manageRequests:false,manageOrders:false,manageApplications:false,printPermissionSlips:false,viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false};
+const NONE:RolePermissions={manageRoles:false,manageHierarchy:false,manageUsers:false,canViewUserUpdates:false,managePosts:false,manageMerchandise:false,manageRequests:false,manageOrders:false,exportOrders:false,manageApplications:false,printPermissionSlips:false,viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false};
 
 export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const[firebaseUser,setFU]=useState<any>(null);
@@ -26,6 +27,16 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
   const[needsProfileCompletion,setNPC]=useState(false);
   const[systemSettings,setSS]=useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const[emailVerified,setEmailVerified]=useState(false);
+  const[hierarchy,setHierarchy]=useState<RoleHierarchy>(DEFAULT_HIERARCHY);
+
+  // Live -- if an admin reorders the hierarchy while people are active,
+  // it applies immediately (matters for the Users page's "can I manage
+  // this person" check, which depends on it).
+  useEffect(()=>{
+    return onSnapshot(doc(db,'settings','roleHierarchy'),snap=>{
+      setHierarchy(snap.exists()&&snap.data().ranks?snap.data().ranks as RoleHierarchy:DEFAULT_HIERARCHY);
+    });
+  },[]);
 
   useEffect(()=>{
     const unsub=onSnapshot(doc(db,'settings','global'),(snap)=>{
@@ -49,7 +60,7 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
     load();
   },[]);
 
-  const resolvePerms=async(role:Role):Promise<RolePermissions>=>{
+  const resolvePerms=async(role:string):Promise<RolePermissions>=>{
     if(role==='super_admin')return DEFAULT_PERMISSIONS.super_admin;
     try{const s=await getDoc(doc(db,'roles',role));if(s.exists())return s.data().permissions;}catch(_){}
     return DEFAULT_PERMISSIONS[role]??NONE;
@@ -105,11 +116,11 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
     return()=>{unsubAuth();unsubProfile?.();unsubRole?.();};
   },[]);
 
-  const STAFF:Role[]=['super_admin','admin','staff','recruitment_officer','editor'];
+  const STAFF:string[]=['super_admin','admin','staff','recruitment_officer','editor'];
   const isStaff=profile?STAFF.includes(profile.role):false;
   const isMember=profile?[...STAFF,'cadet','parent'].includes(profile.role):false;
   const isPending=profile?['pending_cadet','pending_parent'].includes(profile.role):false;
-  const canAccess=useCallback((r:Role|Role[])=>{if(!profile)return false;const rs=Array.isArray(r)?r:[r];return rs.includes(profile.role);},[profile]);
+  const canAccess=useCallback((r:string|string[])=>{if(!profile)return false;const rs=Array.isArray(r)?r:[r];return rs.includes(profile.role);},[profile]);
   const refreshProfile=useCallback(async()=>{const u=auth.currentUser;if(u)await fetchProfile(u);},[fetchProfile]);
   const refreshEmailVerified=useCallback(async()=>{
     const u=auth.currentUser;
@@ -120,6 +131,6 @@ export const UserProvider:React.FC<{children:React.ReactNode}>=({children})=>{
     return v;
   },[]);
 
-  return<Ctx.Provider value={{firebaseUser,profile,permissions,loading,isStaff,isMember,isPending,canAccess,refreshProfile,cart,setCart,schools,systemSettings,needsProfileCompletion,emailVerified,refreshEmailVerified}}>{children}</Ctx.Provider>;
+  return<Ctx.Provider value={{firebaseUser,profile,permissions,loading,isStaff,isMember,isPending,canAccess,refreshProfile,cart,setCart,schools,systemSettings,needsProfileCompletion,emailVerified,refreshEmailVerified,hierarchy}}>{children}</Ctx.Provider>;
 };
 export const useUser=()=>{const c=useContext(Ctx);if(!c)throw new Error('useUser outside provider');return c;};

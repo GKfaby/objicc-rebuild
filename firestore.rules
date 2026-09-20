@@ -18,17 +18,36 @@ service cloud.firestore {
       let roleDoc = get(/databases/$(database)/documents/roles/$(myRole()));
       return roleDoc.exists && roleDoc.data.permissions[perm] == true;
     }
-    // A "protected" account (Super Admin / Admin) can only be touched --
-    // deleted, banned, or have its role changed -- by an admin-tier user,
-    // or by a role explicitly granted manageProtectedUsers. This also
-    // blocks promoting a non-protected user INTO a protected role, not
-    // just editing an already-protected one.
-    function targetIsOrBecomesProtected() {
-      return resource.data.role in ['super_admin','admin'] ||
-        (request.resource != null && request.resource.data.role in ['super_admin','admin']);
+    // Role hierarchy: lower rank number = more senior. Super Admin is
+    // always rank 0. A role missing from the hierarchy map is treated as
+    // the least senior possible (9999) so it can never accidentally
+    // outrank someone.
+    function hierarchyRanks() {
+      let h = get(/databases/$(database)/documents/settings/roleHierarchy);
+      return h.exists ? h.data.ranks : {
+        'super_admin':0,'admin':1,'staff':2,'recruitment_officer':3,'editor':4,
+        'cadet':5,'parent':6,'pending_cadet':7,'pending_parent':8
+      };
     }
+    function rankOf(role) {
+      let ranks = hierarchyRanks();
+      return role in ranks ? ranks[role] : 9999;
+    }
+    // The more senior (lower-numbered) of a user's current role and their
+    // prospective new role, so nobody can dodge the check by requesting a
+    // role change in the same write that touches a protected user.
+    function targetRank() {
+      let cur = rankOf(resource.data.role);
+      let next = (request.resource != null && 'role' in request.resource.data) ? rankOf(request.resource.data.role) : cur;
+      return cur < next ? cur : next;
+    }
+    // You can only manage (edit role, ban, delete) a user ranked strictly
+    // BELOW you -- never a peer, never someone above you. Super Admin is
+    // given a narrow bypass so a stale/missing manageUsers flag can never
+    // lock the top tier out of managing ordinary members -- but even
+    // Super Admin cannot touch rank 0 (another Super Admin).
     function canManageThisUser() {
-      return isAdmin() || (hasPermission('manageUsers') && (!targetIsOrBecomesProtected() || hasPermission('manageProtectedUsers')));
+      return isSuperAdmin() ? targetRank() > 0 : (hasPermission('manageUsers') && rankOf(myRole()) < targetRank());
     }
 
     // Users
@@ -52,7 +71,7 @@ service cloud.firestore {
     // Roles
     match /roles/{roleId} {
       allow read: if true;
-      allow write: if isSuperAdmin() || (isStaff() && hasPermission('manageRoles'));
+      allow write: if isSuperAdmin() || (isStaff() && (hasPermission('manageRoles') || hasPermission('manageHierarchy')));
     }
 
     // System config
@@ -109,7 +128,9 @@ service cloud.firestore {
     // Settings
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isAdmin() || (settingId=='permissionSlipTemplate' && hasPermission('printPermissionSlips'));
+      allow write: if isAdmin()
+        || (settingId=='permissionSlipTemplate' && hasPermission('printPermissionSlips'))
+        || (settingId=='roleHierarchy' && hasPermission('manageHierarchy'));
     }
 
     // Secure settings

@@ -13,6 +13,7 @@ import SessionManager from './components/SessionManager';
 import{useUser} from './contexts/UserContext';
 import{useToast} from './contexts/ToastContext';
 import{NavOffsetProvider,useNavOffset} from './contexts/NavOffsetContext';
+import ScrollToTop from './components/ScrollToTop';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
 import{auth,googleProvider} from './firebase';
 import{Lock,X,Eye,EyeOff} from 'lucide-react';
@@ -114,6 +115,7 @@ function GuestRedirect(){
 
 export default function App(){
   return(<BrowserRouter>
+    <ScrollToTop/>
     <UserProvider><ThemeProvider><ToastProvider><NavOffsetProvider>
       <SessionManager/>
       <MaintenanceGate>

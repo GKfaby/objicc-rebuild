@@ -9,8 +9,8 @@ export const MEMBER_ROLES: Role[] = ['cadet','parent','super_admin','admin','sta
 
 export interface RolePermissions {
   manageRoles:boolean;
+  manageHierarchy:boolean;      // reorder the role hierarchy list and create new roles
   manageUsers:boolean;
-  manageProtectedUsers:boolean;  // delete/restrict Super Admin & Admin accounts
   canViewUserUpdates:boolean;
   managePosts:boolean;
   manageMerchandise:boolean;
@@ -25,20 +25,31 @@ export interface RolePermissions {
 }
 
 const NONE: RolePermissions = {
-  manageRoles:false,manageUsers:false,manageProtectedUsers:false,canViewUserUpdates:false,
+  manageRoles:false,manageHierarchy:false,manageUsers:false,canViewUserUpdates:false,
   managePosts:false,manageMerchandise:false,manageRequests:false,
   manageOrders:false,exportOrders:false,manageApplications:false,printPermissionSlips:false,
   viewAdminDashboard:false,manageSettings:false,managePaymentGateways:false,
 };
 
 export const DEFAULT_PERMISSIONS: Record<string,RolePermissions> = {
-  super_admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
-  admin:{manageRoles:true,manageUsers:true,manageProtectedUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
-  staff:{manageRoles:false,manageUsers:true,manageProtectedUsers:false,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,exportOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
+  super_admin:{manageRoles:true,manageHierarchy:true,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:true},
+  admin:{manageRoles:true,manageHierarchy:false,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:true,exportOrders:true,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:true,managePaymentGateways:false},
+  staff:{manageRoles:false,manageHierarchy:false,manageUsers:true,canViewUserUpdates:true,managePosts:true,manageMerchandise:true,manageRequests:true,manageOrders:false,exportOrders:false,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true,manageSettings:false,managePaymentGateways:false},
   recruitment_officer:{...NONE,manageApplications:true,printPermissionSlips:true,viewAdminDashboard:true},
   editor:{...NONE,managePosts:true,viewAdminDashboard:true},
   cadet:{...NONE},parent:{...NONE},pending_cadet:{...NONE},pending_parent:{...NONE},visitor:{...NONE},
 };
+
+// Role hierarchy: lower rank number = more senior. Super Admin is always
+// rank 0 and locked there -- nobody can reorder or remove it from the top.
+// Stored as a role -> rank map (not an ordered array) so it can be looked
+// up directly both client-side and in Firestore security rules.
+export type RoleHierarchy = Record<string,number>;
+export const DEFAULT_HIERARCHY: RoleHierarchy = {
+  super_admin:0,admin:1,staff:2,recruitment_officer:3,editor:4,
+  cadet:5,parent:6,pending_cadet:7,pending_parent:8,
+};
+export interface RoleDoc { id:string; name?:string; permissions:RolePermissions; custom?:boolean; }
 
 export interface HeroStat { label:string; desc:string; }
 export type AppTheme = 'default'|'summer'|'autumn'|'winter'|'spring';
@@ -71,7 +82,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
 
 export interface UserProfile {
   uid:string; email:string; firstName:string; lastName:string;
-  middleInitial?:string; displayName:string; phone:string; role:Role;
+  middleInitial?:string; displayName:string; phone:string; role:string;
   requestedRole?:'cadet'|'parent'; status:'pending'|'approved'|'rejected';
   school?:string; cadetName?:string; cadetFirstName?:string; cadetLastName?:string;
   cadetMiddleInitial?:string; cadetSchool?:string; avatarUrl?:string; createdAt:any;
