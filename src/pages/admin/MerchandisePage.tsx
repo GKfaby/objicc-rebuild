@@ -3,8 +3,8 @@ import{collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,orde
 import{db} from '../../firebase';
 import{Plus,Edit2,Trash2,X,Image,Save,Eye,EyeOff,ShoppingBag,DollarSign,Package,Check,ChevronDown,ChevronUp} from 'lucide-react';
 import{useToast} from '../../contexts/ToastContext';
-import type{Merchandise,PricingOption} from '../../types';
-const EMPTY:Partial<Merchandise>={name:"",description:"",price:"",image:"",category:"",isPublished:false,pricingOptions:[],totalStock:0};
+import type{Merchandise,PricingOption,MerchandiseCurrency} from '../../types';
+const EMPTY:Partial<Merchandise>={name:"",description:"",price:"",currency:'JMD',image:"",category:"",isPublished:false,pricingOptions:[],totalStock:0};
 const EO:PricingOption={label:"",price:"",isActive:true,stock:0};
 export default function MerchandisePage(){
   const[storeMode,setStoreMode]=useState<'cadet'|'public'>('cadet');
@@ -70,7 +70,7 @@ export default function MerchandisePage(){
           {item.image?<img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover shrink-0"/>:<div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0"><ShoppingBag className="w-6 h-6 text-slate-300"/></div>}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">{item.category&&<span className="px-2 py-0.5 bg-navy/10 text-navy dark:text-gold rounded-full text-xs font-black">{item.category}</span>}<span className={`px-2 py-0.5 rounded-full text-xs font-black ${item.isPublished?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'}`}>{item.isPublished?'Published':'Draft'}</span></div>
-            <p className="font-black text-navy dark:text-white text-sm truncate">{item.name}</p><p className="text-ocean font-black text-sm">{item.price}</p>
+            <p className="font-black text-navy dark:text-white text-sm truncate">{item.name}</p><p className="text-ocean font-black text-sm">{item.currency||'JMD'} {item.price}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={()=>setExpanded(expanded===item.id?null:item.id)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">{expanded===item.id?<ChevronUp className="w-4 h-4 text-slate-400"/>:<ChevronDown className="w-4 h-4 text-slate-400"/>}</button>
@@ -114,7 +114,7 @@ export default function MerchandisePage(){
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Item Name *</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. OBJICC Beret" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none focus:ring-2 focus:ring-navy/20 text-sm"/></div>
-            <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Base Price *</label><div className="relative"><DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input value={form.price||''} onChange={e=>set('price',e.target.value)} placeholder="JMD $1,500" className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm"/></div></div>
+            <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Currency *</label><div className="flex gap-2"><select value={form.currency||'JMD'} onChange={e=>set('currency',e.target.value as MerchandiseCurrency)} className="w-24 px-2 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-black outline-none text-sm"><option value="JMD">JMD</option><option value="USD">USD</option></select><div className="relative flex-1"><DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input value={form.price||''} onChange={e=>set('price',e.target.value)} placeholder="1,500" className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm"/></div></div></div>
             <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Total Stock</label><div className="relative"><Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input type="number" min={0} value={form.totalStock??''} onChange={e=>set('totalStock',parseInt(e.target.value)||0)} placeholder="0=unlimited" className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm"/></div></div>
           </div>
           <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Description</label><textarea rows={3} value={form.description||''} onChange={e=>set('description',e.target.value)} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm resize-none"/></div>

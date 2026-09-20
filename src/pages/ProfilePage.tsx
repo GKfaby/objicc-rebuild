@@ -1,7 +1,7 @@
 import{useState} from 'react';
 import{User,Edit2,Save,X,School,Phone,Shield,Clock,LogOut} from 'lucide-react';
 import{doc,updateDoc,serverTimestamp} from 'firebase/firestore';
-import{signOut} from 'firebase/auth';
+import{signOut,updateProfile} from 'firebase/auth';
 import{auth,db} from '../firebase';
 import{useUser} from '../contexts/UserContext';
 import{useToast} from '../contexts/ToastContext';
@@ -15,13 +15,16 @@ export default function ProfilePage(){
   const[editing,setEditing]=useState(false);
   const[saving,setSaving]=useState(false);
   const[signingOut,setSigningOut]=useState(false);
-  const[form,setForm]=useState({phone:profile?.phone||'',school:profile?.school||'',cadetSchool:profile?.cadetSchool||''});
+  const[form,setForm]=useState({firstName:profile?.firstName||'',middleInitial:profile?.middleInitial||'',lastName:profile?.lastName||'',phone:profile?.phone||'',school:profile?.school||'',cadetSchool:profile?.cadetSchool||''});
   if(!profile)return null;
   const handleSave=async()=>{setSaving(true);
-    try{const u:any={phone:form.phone,updatedAt:serverTimestamp()};
+    try{
+      if(!form.firstName.trim()||!form.lastName.trim()){showToast('First and last name are required.','error');setSaving(false);return;}
+      const displayName=`${form.firstName.trim()}${form.middleInitial.trim()?` ${form.middleInitial.trim()}.`:''} ${form.lastName.trim()}`.trim();
+      const u:any={firstName:form.firstName.trim(),middleInitial:form.middleInitial.trim(),lastName:form.lastName.trim(),displayName,phone:form.phone,updatedAt:serverTimestamp()};
       if(profile.role==='cadet'||profile.requestedRole==='cadet')u.school=form.school;
       if(profile.role==='parent'||profile.requestedRole==='parent')u.cadetSchool=form.cadetSchool;
-      await updateDoc(doc(db,'users',profile.uid),u);await refreshProfile();showToast('Profile updated!','success');setEditing(false);
+      await updateDoc(doc(db,'users',profile.uid),u);if(auth.currentUser)await updateProfile(auth.currentUser,{displayName});await refreshProfile();showToast('Profile updated!','success');setEditing(false);
     }catch{showToast('Failed to save.','error');}finally{setSaving(false);}};
   const handleSignOut=async()=>{if(!window.confirm('Sign out of OBJICC?'))return;setSigningOut(true);
     try{await signOut(auth);navigate('/');}catch{showToast('Failed to sign out.','error');setSigningOut(false);}};
@@ -77,10 +80,13 @@ export default function ProfilePage(){
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 space-y-5 mb-4">
         <h2 className="font-black text-navy dark:text-white uppercase tracking-widest text-sm">Profile Details</h2>
-        {[{label:'First Name',value:profile.firstName},{label:'Last Name',value:profile.lastName},{label:'Email',value:profile.email},...(profile.cadetName?[{label:'Cadet Name',value:profile.cadetName}]:[])].map(({label,value})=>(
-          <div key={label}><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">{label}</label>
-            <div className="px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold text-sm border border-slate-200 dark:border-slate-600">{value||'—'}</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[{key:'firstName',label:'First Name'},{key:'middleInitial',label:'Middle Initial'},{key:'lastName',label:'Last Name'}].map(({key,label})=><div key={key}><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">{label}</label>
+            {editing?<input value={form[key as 'firstName'|'middleInitial'|'lastName']} maxLength={key==='middleInitial'?2:80} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold text-sm outline-none border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-navy/20"/>:<div className="px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold text-sm border border-slate-200 dark:border-slate-600">{profile[key as 'firstName'|'middleInitial'|'lastName']||'—'}</div>}
+          </div>)}
+        </div>
+        {[{label:'Email',value:profile.email},...(profile.cadetName?[{label:'Cadet Name',value:profile.cadetName}]:[])].map(({label,value})=>(
+          <div key={label}><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">{label}</label><div className="px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold text-sm border border-slate-200 dark:border-slate-600">{value||'—'}</div></div>
         ))}
         <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Phone</label>
           {editing?(

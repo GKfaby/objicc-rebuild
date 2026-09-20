@@ -4,25 +4,27 @@ import{db} from '../../firebase';
 import{Plus,Edit2,Trash2,X,Image,Save,Calendar,Bell,FileText,ChevronDown,ChevronUp,Tag,Check} from 'lucide-react';
 import{useToast} from '../../contexts/ToastContext';
 import{ROLE_LABELS} from '../../types';
-import type{Post,Role} from '../../types';
+import type{Post} from '../../types';
 const CATS=["Announcements","Training","Events"] as const;
-const MRO:Role[]=["cadet","parent","staff","admin","super_admin"];
+const UNRESTRICTED_ROLES=new Set(['admin','super_admin','staff']);
 const EMPTY:Partial<Post>={title:"",type:"notice",category:"Announcements",date:"",description:"",image:"",hasPermissionSlip:false,permissionSlipUrl:"",isPrintable:false,allowedRoles:[],location:"",startTime:"",endTime:"",meetLocation:"",meetTime:""};
 export default function PostsPage(){
-  const[posts,setPosts]=useState<Post[]>([]);const[loading,setLoading]=useState(true);
+  const[posts,setPosts]=useState<Post[]>([]);const[roleDocs,setRoleDocs]=useState<Record<string,any>>({});const[loading,setLoading]=useState(true);
   const[open,setOpen]=useState(false);const[editing,setEditing]=useState<Post|null>(null);const[form,setForm]=useState<Partial<Post>>(EMPTY);
   const[saving,setSaving]=useState(false);const[uploading,setUploading]=useState(false);
   const[filterType,setFilterType]=useState<"all"|"notice"|"event">("all");
   const[expanded,setExpanded]=useState<string|null>(null);
   const imgRef=useRef<HTMLInputElement>(null);const{showToast}=useToast();
   useEffect(()=>{const q=query(collection(db,'posts'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setPosts(snap.docs.map(d=>({id:d.id,...d.data()} as Post)));setLoading(false);});},[]);
+  useEffect(()=>onSnapshot(collection(db,'roles'),snap=>setRoleDocs(Object.fromEntries(snap.docs.map(d=>[d.id,d.data()])))),[]);
+  const audienceRoles=Object.keys(roleDocs).filter(r=>!UNRESTRICTED_ROLES.has(r)).sort((a,b)=>(roleDocs[a]?.name||a).localeCompare(roleDocs[b]?.name||b));
   const openCreate=()=>{setEditing(null);setForm({...EMPTY});setOpen(true);};
   const openEdit=(p:Post)=>{setEditing(p);setForm({...EMPTY,...p});setOpen(true);};
   const close=()=>{setOpen(false);setEditing(null);setForm(EMPTY);};
   const set=(k:keyof Post,v:any)=>setForm(p=>({...p,[k]:v}));
-  const toggleRole=(r:Role)=>set('allowedRoles',(form.allowedRoles||[]).includes(r)?(form.allowedRoles||[]).filter(x=>x!==r):[...(form.allowedRoles||[]),r]);
+  const toggleRole=(r:string)=>set('allowedRoles',(form.allowedRoles||[]).includes(r)?(form.allowedRoles||[]).filter(x=>x!==r):[...(form.allowedRoles||[]),r]);
   const handleSave=async()=>{if(!form.title?.trim()||!form.date?.trim()||!form.description?.trim()){showToast('Fill in all required fields.','error');return;}setSaving(true);
-    try{const d={...form,allowedRoles:form.allowedRoles?.length?form.allowedRoles:[],updatedAt:serverTimestamp()};
+    try{const d={...form,allowedRoles:(form.allowedRoles||[]).filter(r=>!UNRESTRICTED_ROLES.has(r)),updatedAt:serverTimestamp()};
       if(editing)await updateDoc(doc(db,'posts',editing.id),d);else await addDoc(collection(db,'posts'),{...d,createdAt:serverTimestamp(),likes:0});
       showToast(editing?'Post updated!':'Post created!','success');close();
     }catch{showToast('Failed to save.','error');}finally{setSaving(false);}};
@@ -117,7 +119,7 @@ export default function PostsPage(){
             </div>
           </div>
           <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Visibility</label><p className="text-xs text-slate-400 mb-3">Leave all unchecked for everyone. Check roles to restrict.</p>
-            <div className="grid grid-cols-2 gap-2">{MRO.map(r=>{const sel=(form.allowedRoles||[]).includes(r);return(<div key={r} onClick={()=>toggleRole(r)} className={`flex items-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${sel?'border-navy bg-navy/5 dark:border-gold':'border-slate-100 dark:border-slate-700'}`}><div className={`w-4 h-4 rounded-lg border-2 flex items-center justify-center ${sel?'bg-navy border-navy dark:bg-gold dark:border-gold':'border-slate-300 dark:border-slate-500'}`}>{sel&&<Check className="w-2.5 h-2.5 text-white"/>}</div><span className={`text-xs font-bold ${sel?'text-navy dark:text-white':'text-slate-400'}`}>{ROLE_LABELS[r]}</span></div>);})}</div>
+            <div className="grid grid-cols-2 gap-2">{audienceRoles.map(r=>{const sel=(form.allowedRoles||[]).includes(r);return(<div key={r} onClick={()=>toggleRole(r)} className={`flex items-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${sel?'border-navy bg-navy/5 dark:border-gold':'border-slate-100 dark:border-slate-700'}`}><div className={`w-4 h-4 rounded-lg border-2 flex items-center justify-center ${sel?'bg-navy border-navy dark:bg-gold dark:border-gold':'border-slate-300 dark:border-slate-500'}`}>{sel&&<Check className="w-2.5 h-2.5 text-white"/>}</div><span className={`text-xs font-bold ${sel?'text-navy dark:text-white':'text-slate-400'}`}>{ROLE_LABELS[r as keyof typeof ROLE_LABELS]||roleDocs[r]?.name||r}</span></div>);})}</div>
           </div>
         </div>
         <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 shrink-0">

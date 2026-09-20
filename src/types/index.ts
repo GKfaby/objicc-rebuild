@@ -92,7 +92,7 @@ export interface Post {
   id:string; title:string; type:'notice'|'event';
   category:'Announcements'|'Training'|'Events'; date:string; description:string;
   image?:string; hasPermissionSlip?:boolean; permissionSlipUrl?:string;
-  isPrintable?:boolean; allowedRoles?:Role[]; likes?:number; createdAt:any;
+  isPrintable?:boolean; allowedRoles?:string[]; likes?:number; createdAt:any;
   location?:string; startTime?:string; endTime?:string; meetLocation?:string; meetTime?:string;
   startDate?:string; endDate?:string; startMode?:'time'|'date'|'both'; endMode?:'time'|'date'|'both';
 }
@@ -110,12 +110,14 @@ export const DEFAULT_SLIP_TEMPLATE:PermissionSlipTemplate={
   indemnityText:'In addition, I indemnify, save harmless and forever discharge the Ocean Blue Jamaica Marine Corps, its employees and agents from and against any claims, demand, actions or cause of action of every nature arising out of this event.',
 };
 export interface PricingOption { label:string; price:string; isActive:boolean; stock?:number; }
+export type MerchandiseCurrency = 'USD'|'JMD';
 export interface Merchandise {
   id:string; name:string; description?:string; price:string; image?:string;
+  currency?:MerchandiseCurrency;
   category?:string; isPublished:boolean; pricingOptions?:PricingOption[];
   totalStock?:number; createdAt:any;
 }
-export interface CartItem { id:string; name:string; price:string; quantity:number; selectedSize?:string; image?:string; lineKey?:string; }
+export interface CartItem { id:string; name:string; price:string; currency?:MerchandiseCurrency; quantity:number; selectedSize?:string; image?:string; lineKey?:string; }
 export interface Application {
   id:string; cadetName:string; school:string; grade:string; parentName:string;
   parentPhone:string; cadetPhone?:string; status:'pending'|'reviewed'|'accepted'|'rejected';
@@ -125,6 +127,7 @@ export interface AppNotification { id:string; title:string; message:string; type
 export interface Suggestion { id:string; content:string; category?:string; anonymous:boolean; submittedBy?:string; status:'pending'|'reviewed'|'actioned'; createdAt:any; }
 export interface MerchRequest {
   id:string; userUid:string; requesterName:string; cadetName:string; phone:string;
+  customerName?:string; customerPhone?:string; source?:'cadet'|'public'; orderCollection?:'merch_requests'|'public_orders';
   items:CartItem[]; totalPrice:string; paymentMethod:'online'|'walk-in';
   paymentStatus:'pending'|'paid'|'canceled'; status:'pending'|'completed'|'canceled';
   deleted?:boolean; deletedAt?:any; requestId?:string; createdAt:any;

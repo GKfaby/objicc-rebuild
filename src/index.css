@@ -135,6 +135,10 @@ body {
 }
 .dark input::placeholder,
 .dark textarea::placeholder { color: var(--text-muted) !important; }
+.dark select option {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+}
 
 /* ── Text ────────────────────────────────────────────────────────────────── */
 :not(.dark) .text-slate-400,

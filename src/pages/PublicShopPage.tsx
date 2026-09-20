@@ -8,7 +8,16 @@ import { useToast } from '../contexts/ToastContext';
 import type { Merchandise, PricingOption } from '../types';
 
 const priceNum = (p: string) => parseFloat(p.replace(/[^0-9.]/g, '')) || 0;
+const itemCurrency = (item: Merchandise | { currency?: 'USD' | 'JMD' }): 'USD' | 'JMD' => item.currency || 'JMD';
+const displayPrice = (price: string, currency: 'USD' | 'JMD') => /^(USD|JMD)\b/.test(price.trim()) ? price : `${currency} $${price}`;
 const lineKey = (id: string, size?: string) => `${id}__${size || 'base'}`;
+const withoutUndefined = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(withoutUndefined);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined).map(([key, entry]) => [key, withoutUndefined(entry)]));
+  }
+  return value;
+};
 const RECEIPT_ACCEPT = '.jpg,.jpeg,.png,.heic,.heif,.webp,.pdf,image/jpeg,image/png,image/heic,image/heif,image/webp,application/pdf';
 const RECEIPT_MAX_MB = 15;
 
@@ -68,7 +77,7 @@ export default function PublicShopPage() {
     setCart(prev => {
       const ex = prev.find(c => (c.lineKey || lineKey(c.id, c.selectedSize)) === key);
       if (ex) return prev.map(c => (c.lineKey || lineKey(c.id, c.selectedSize)) === key ? { ...c, quantity: c.quantity + opts.qty } : c);
-      return [...prev, { id: item.id, name: item.name, price, quantity: opts.qty, selectedSize: size, image: item.image, lineKey: key }];
+      return [...prev, { id: item.id, name: item.name, price, currency: itemCurrency(item), quantity: opts.qty, selectedSize: size, image: item.image, lineKey: key }];
     });
     showToast(`${item.name}${size ? ` (${size})` : ''} added to cart`, 'success');
     setCartOpen(true);
@@ -85,14 +94,14 @@ export default function PublicShopPage() {
   const removeLine = (key: string) => setCart(p => p.filter(c => (c.lineKey || lineKey(c.id, c.selectedSize)) !== key));
 
   const totalItems = cart.reduce((s, c) => s + c.quantity, 0);
-  const totalPrice = () => { const sum = cart.reduce((s, c) => s + priceNum(c.price) * c.quantity, 0); return `JMD $${sum.toFixed(2)}`; };
+  const totalPrice = () => Object.entries(cart.reduce((s, c) => { const currency = itemCurrency(c); s[currency] = (s[currency] || 0) + priceNum(c.price) * c.quantity; return s; }, {} as Record<'USD' | 'JMD', number>)).map(([currency, sum]) => `${currency} $${sum.toFixed(2)}`).join(' + ');
 
   const finalizeOrder = async (extra: Record<string, any> = {}) => {
     if (!cart.length) return;
     setSubmitting(true);
     try {
       const requestId = `PUB-${Date.now().toString(36).toUpperCase()}`;
-      await addDoc(collection(db, 'public_orders'), {
+      await addDoc(collection(db, 'public_orders'), withoutUndefined({
         userUid: profile?.uid || 'guest',
         customerName,
         customerPhone,
@@ -104,15 +113,17 @@ export default function PublicShopPage() {
         requestId,
         createdAt: serverTimestamp(),
         ...extra
-      });
+      }));
       setCart([]);
       setOrderSuccess(true);
       setPaymentMethod(null);
       setCheckoutStep('closed');
       setReceiptFile(null);
       showToast('Order submitted!', 'success');
-    } catch {
-      showToast('Failed to submit order.', 'error');
+    } catch (err) {
+      console.error('Failed to submit public order:', err);
+      const code = (err as { code?: string })?.code;
+      showToast(`Failed to submit order${code ? ` (${code})` : ''}.`, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +241,7 @@ export default function PublicShopPage() {
                       <h3 className="font-black text-navy dark:text-white text-sm leading-tight mb-1">{item.name}</h3>
                       {item.description && <p className="text-slate-400 text-xs mb-3 line-clamp-2">{item.description}</p>}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-black text-ocean text-base">{hasVariants ? `From ${item.price}` : item.price}</span>
+                        <span className="font-black text-ocean text-base">{hasVariants ? `From ${displayPrice(item.price, itemCurrency(item))}` : displayPrice(item.price, itemCurrency(item))}</span>
                         <button onClick={e => quickAdd(item, e)} disabled={allOutOfStock}
                           className="flex items-center gap-1 px-3 py-1.5 bg-ocean text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-navy transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
                           <Plus className="w-3 h-3" />Add
@@ -267,7 +278,7 @@ export default function PublicShopPage() {
                     const sel = detailVariant?.label === o.label;
                     return (<button key={o.label} disabled={out} onClick={() => { setDetailVariant(o); setDetailQty(1); }}
                       className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${out ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-700 text-slate-400' : sel ? 'border-ocean bg-ocean/10 text-ocean dark:text-white' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-ocean/40'}`}>
-                      {o.label} — {o.price}{out ? ' (Out of stock)' : ''}
+                      {o.label} — {displayPrice(o.price, itemCurrency(detailItem))}{out ? ' (Out of stock)' : ''}
                     </button>);
                   })}
                 </div>
@@ -290,7 +301,7 @@ export default function PublicShopPage() {
               ) : (
                 <button onClick={() => { addToCart(detailItem, { variant: detailVariant, qty: detailQty }); closeDetail(); }}
                   className="w-full py-3.5 bg-ocean text-white font-black rounded-xl text-sm uppercase tracking-widest hover:bg-navy transition-colors flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" />Add to Cart — JMD ${(priceNum(detailPrice) * detailQty).toFixed(2)}
+                  <Plus className="w-4 h-4" />Add to Cart — {itemCurrency(detailItem)} ${(priceNum(detailPrice) * detailQty).toFixed(2)}
                 </button>
               )}
             </div>
@@ -322,7 +333,7 @@ export default function PublicShopPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-navy dark:text-white text-sm truncate">{item.name}</p>
                         {item.selectedSize && <p className="text-xs text-slate-400">{item.selectedSize}</p>}
-                        <p className="text-ocean font-black text-sm">{item.price}</p>
+                        <p className="text-ocean font-black text-sm">{displayPrice(item.price, itemCurrency(item))}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <button onClick={() => updateQty(key, -1)} className="w-6 h-6 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center"><Minus className="w-3 h-3" /></button>

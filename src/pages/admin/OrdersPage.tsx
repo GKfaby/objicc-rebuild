@@ -24,6 +24,7 @@ export default function OrdersPage(){
   const[sel,setSel]=useState<MerchRequest|null>(null);
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState<'all'|'pending'|'completed'|'canceled'>('all');
+  const[sourceFilter,setSourceFilter]=useState<'all'|'cadet'|'public'>('all');
   const[tab,setTab]=useState<'orders'|'trash'>('orders');
   const[showEmptyConfirm,setShowEmptyConfirm]=useState(false);
   const[showExport,setShowExport]=useState(false);
@@ -39,33 +40,36 @@ export default function OrdersPage(){
   const canManage=permissions.manageOrders;
   const canExport=permissions.exportOrders;
 
-  // Active orders
+  const normalizeOrder=(id:string,data:any,source:'cadet'|'public'):MerchRequest=>({
+    id,...data,source,orderCollection:source==='public'?'public_orders':'merch_requests',
+    requesterName:data.requesterName||data.customerName||'Guest',
+    phone:data.phone||data.customerPhone||'',
+    cadetName:data.cadetName||'',
+  } as MerchRequest);
+  const orderRef=(order:MerchRequest)=>doc(db,order.orderCollection||'merch_requests',order.id);
+
+  // Active orders from both stores
   useEffect(()=>{
-    const q=query(collection(db,'merch_requests'),orderBy('createdAt','desc'));
-    return onSnapshot(q,snap=>{
-      const all=snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest));
-      setOrders(all.filter(o=>!o.deleted));
-      setLoading(false);
-    }, err => {
-      console.error("Error fetching orders:", err);
-      setLoading(false);
-    });
+    let cadet:MerchRequest[]=[];let publicOrders:MerchRequest[]=[];let ready=0;
+    const update=()=>{setOrders([...cadet,...publicOrders].filter(o=>!o.deleted).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0)));setLoading(ready<2);};
+    const unsubCadet=onSnapshot(query(collection(db,'merch_requests'),orderBy('createdAt','desc')),snap=>{cadet=snap.docs.map(d=>normalizeOrder(d.id,d.data(),'cadet'));ready=Math.max(ready,1);update();},err=>{console.error('Error fetching cadet orders:',err);ready=Math.max(ready,1);update();});
+    const unsubPublic=onSnapshot(query(collection(db,'public_orders'),orderBy('createdAt','desc')),snap=>{publicOrders=snap.docs.map(d=>normalizeOrder(d.id,d.data(),'public'));ready=Math.max(ready,2);update();},err=>{console.error('Error fetching public orders:',err);ready=Math.max(ready,2);update();});
+    return()=>{unsubCadet();unsubPublic();};
   },[]);
 
   // Trash (soft-deleted)
   useEffect(()=>{
     if(!canManage)return;
-    const q=query(collection(db,'merch_requests'),orderBy('createdAt','desc'));
-    return onSnapshot(q,snap=>{
-      const all=snap.docs.map(d=>({id:d.id,...d.data()} as MerchRequest));
-      setTrash(all.filter(o=>o.deleted).sort((a,b)=>((b as any).deletedAt?.toMillis?.()||0)-((a as any).deletedAt?.toMillis?.()||0)));
-    }, err => {
-      console.error("Error fetching trash:", err);
-    });
+    let cadet:MerchRequest[]=[];let publicOrders:MerchRequest[]=[];let ready=0;
+    const update=()=>setTrash([...cadet,...publicOrders].filter(o=>o.deleted).sort((a,b)=>((b as any).deletedAt?.toMillis?.()||0)-((a as any).deletedAt?.toMillis?.()||0)));
+    const unsubCadet=onSnapshot(query(collection(db,'merch_requests'),orderBy('createdAt','desc')),snap=>{cadet=snap.docs.map(d=>normalizeOrder(d.id,d.data(),'cadet'));ready=Math.max(ready,1);update();},err=>console.error('Error fetching cadet trash:',err));
+    const unsubPublic=onSnapshot(query(collection(db,'public_orders'),orderBy('createdAt','desc')),snap=>{publicOrders=snap.docs.map(d=>normalizeOrder(d.id,d.data(),'public'));ready=Math.max(ready,2);update();},err=>console.error('Error fetching public trash:',err));
+    return()=>{unsubCadet();unsubPublic();};
   },[canManage]);
 
   const upd=async(id:string,u:Partial<MerchRequest>)=>{
-    await updateDoc(doc(db,'merch_requests',id),{...u,updatedAt:serverTimestamp()});
+    const order=orders.find(o=>o.id===id)||trash.find(o=>o.id===id);
+    await updateDoc(order?orderRef(order):doc(db,'merch_requests',id),{...u,updatedAt:serverTimestamp()});
     if(sel?.id===id)setSel(p=>p?{...p,...u}:null);
   };
 
@@ -90,16 +94,19 @@ export default function OrdersPage(){
   const emptyTrash=async()=>{
     if(!canManage)return;
     const batch=writeBatch(db);
-    trash.forEach(o=>batch.delete(doc(db,'merch_requests',o.id)));
-    await batch.commit();setShowEmptyConfirm(false);showToast(`${trash.length} order(s) permanently deleted`,'info');
+    visibleTrash.forEach(o=>batch.delete(orderRef(o)));
+    await batch.commit();setShowEmptyConfirm(false);showToast(`${visibleTrash.length} order(s) permanently deleted`,'info');
   };
 
   const filtered=orders
+    .filter(o=>sourceFilter==='all'||o.source===sourceFilter)
     .filter(o=>filter==='all'||o.status===filter)
     .filter(o=>!search||[o.requesterName,o.cadetName,o.requestId,o.phone].some(v=>v?.toLowerCase().includes(search.toLowerCase())));
 
-  const counts={all:orders.length,pending:orders.filter(o=>o.status==='pending').length,completed:orders.filter(o=>o.status==='completed').length,canceled:orders.filter(o=>o.status==='canceled').length};
-  const pendingVal=orders.filter(o=>o.status==='pending').reduce((s,o)=>s+(parseFloat(o.totalPrice?.replace(/[^0-9.]/g,''))||0),0);
+  const visibleOrders=orders.filter(o=>sourceFilter==='all'||o.source===sourceFilter);
+  const visibleTrash=trash.filter(o=>sourceFilter==='all'||o.source===sourceFilter);
+  const counts={all:visibleOrders.length,pending:visibleOrders.filter(o=>o.status==='pending').length,completed:visibleOrders.filter(o=>o.status==='completed').length,canceled:visibleOrders.filter(o=>o.status==='canceled').length};
+  const pendingVal=visibleOrders.filter(o=>o.status==='pending').reduce((s,o)=>s+(parseFloat(o.totalPrice?.replace(/[^0-9.]/g,''))||0),0);
 
   // ── Export (exportOrders permission only) ────────────────────────────────
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -124,6 +131,7 @@ export default function OrdersPage(){
   };
 
   const getOrdersInRange=(start:Date,end:Date)=>orders
+    .filter(o=>sourceFilter==='all'||o.source===sourceFilter)
     .filter(o=>{const d=o.createdAt?.toDate?.();return d&&d>=start&&d<=end;})
     .sort((a,b)=>(a.createdAt?.toMillis?.()||0)-(b.createdAt?.toMillis?.()||0));
 
@@ -271,9 +279,9 @@ export default function OrdersPage(){
               <Download className="w-4 h-4"/>Export Orders
             </button>
           )}
-          {canManage&&tab==='trash'&&trash.length>0&&(
+          {canManage&&tab==='trash'&&visibleTrash.length>0&&(
             <button onClick={()=>setShowEmptyConfirm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">
-              <Trash2 className="w-4 h-4"/>Empty Recycle Bin ({trash.length})
+              <Trash2 className="w-4 h-4"/>Empty Recycle Bin ({visibleTrash.length})
             </button>
           )}
         </div>
@@ -295,7 +303,7 @@ export default function OrdersPage(){
         </button>
         {canManage&&(
           <button onClick={()=>setTab('trash')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${tab==='trash'?'bg-red-500 text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500'}`}>
-            <Trash2 className="w-3 h-3"/>Recycle Bin {trash.length>0&&<span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${tab==='trash'?'bg-white/20 text-white':'bg-red-100 text-red-600'}`}>{trash.length}</span>}
+            <Trash2 className="w-3 h-3"/>Recycle Bin {visibleTrash.length>0&&<span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${tab==='trash'?'bg-white/20 text-white':'bg-red-100 text-red-600'}`}>{visibleTrash.length}</span>}
           </button>
         )}
       </div>
@@ -303,7 +311,7 @@ export default function OrdersPage(){
       {/* ── TRASH TAB ── */}
       {tab==='trash'&&canManage&&(
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          {trash.length===0?(
+          {visibleTrash.length===0?(
             <div className="py-16 text-center text-slate-400">
               <Trash2 className="w-10 h-10 mx-auto mb-3 opacity-30"/><p className="font-bold text-sm">Recycle bin is empty</p>
             </div>
@@ -312,9 +320,9 @@ export default function OrdersPage(){
               <thead><tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30">
                 {['Order ID','Customer','Total','Deleted',''].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 first:pl-5">{h}</th>)}
               </tr></thead>
-              <tbody>{trash.map(o=>(
-                <tr key={o.id} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/20 opacity-70">
-                  <td className="px-5 py-3"><p className="font-black text-navy dark:text-white text-xs">{o.requestId||o.id.slice(0,8).toUpperCase()}</p></td>
+              <tbody>{visibleTrash.map(o=>(
+                <tr key={`${o.source}-${o.id}`} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/20 opacity-70">
+                  <td className="px-5 py-3"><p className="font-black text-navy dark:text-white text-xs">{o.requestId||o.id.slice(0,8).toUpperCase()}</p><p className="text-[10px] font-black uppercase text-slate-400">{o.source==='public'?'Ocean Blue JA':'Cadet'} Store</p></td>
                   <td className="px-4 py-3"><p className="font-bold text-navy dark:text-white text-sm">{o.requesterName}</p><p className="text-xs text-slate-400">{o.phone}</p></td>
                   <td className="px-4 py-3 font-black text-navy dark:text-white text-sm">{o.totalPrice}</td>
                   <td className="px-4 py-3 text-xs text-slate-400">{(o as any).deletedAt?.toDate?.().toLocaleDateString()||'—'}</td>
@@ -325,7 +333,7 @@ export default function OrdersPage(){
                       </button>
                       <button onClick={async()=>{
                         if(!window.confirm('Permanently delete this order? This cannot be undone.'))return;
-                        await import('firebase/firestore').then(({deleteDoc})=>deleteDoc(doc(db,'merch_requests',o.id)));
+                        await import('firebase/firestore').then(({deleteDoc})=>deleteDoc(orderRef(o)));
                         showToast('Order permanently deleted','info');
                       }} className="flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-xs font-black uppercase tracking-widest">
                         <Trash2 className="w-3 h-3"/>Delete
@@ -343,7 +351,7 @@ export default function OrdersPage(){
       {tab==='orders'&&(<>
         <div className="flex gap-3 flex-wrap items-center">
           <div className="relative flex-1 min-w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, order ID…" className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-navy dark:text-white outline-none"/></div>
-          <div className="flex gap-2 flex-wrap">{(['all','pending','completed','canceled'] as const).map(s=><button key={s} onClick={()=>setFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter===s?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-navy dark:hover:text-white'}`}>{s} ({counts[s]})</button>)}</div>
+          <div className="flex gap-2 flex-wrap">{(['all','cadet','public'] as const).map(s=><button key={s} onClick={()=>setSourceFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${sourceFilter===s?'bg-ocean text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-ocean dark:hover:text-white'}`}>{s==='all'?'All Stores':s==='public'?'Ocean Blue JA':'Cadet Shop'}</button>)}{(['all','pending','completed','canceled'] as const).map(s=><button key={s} onClick={()=>setFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter===s?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-navy dark:hover:text-white'}`}>{s} ({counts[s]})</button>)}</div>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden">
           {loading?<div className="p-6 space-y-3">{[...Array(5)].map((_,i)=><div key={i} className="h-12 bg-slate-50 dark:bg-slate-700 rounded-xl animate-pulse"/>)}</div>
@@ -351,8 +359,8 @@ export default function OrdersPage(){
           :<table className="w-full text-sm">
             <thead><tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30">{['Order ID','Customer','Items','Total','Payment','Status',''].map(h=><th key={h} className="text-left px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 first:pl-5">{h}</th>)}</tr></thead>
             <tbody>{filtered.map(o=>(
-              <tr key={o.id} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors">
-                <td className="px-5 py-3"><p className="font-black text-navy dark:text-white text-xs">{o.requestId||o.id.slice(0,8).toUpperCase()}</p><p className="text-xs text-slate-400">{o.createdAt?.toDate?.().toLocaleDateString()}</p></td>
+              <tr key={`${o.source}-${o.id}`} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors">
+                <td className="px-5 py-3"><p className="font-black text-navy dark:text-white text-xs">{o.requestId||o.id.slice(0,8).toUpperCase()}</p><p className="text-xs text-slate-400">{o.source==='public'?'Ocean Blue JA':'Cadet'} · {o.createdAt?.toDate?.().toLocaleDateString()}</p></td>
                 <td className="px-4 py-3"><p className="font-bold text-navy dark:text-white text-sm">{o.requesterName}</p><p className="text-xs text-slate-400">{o.phone}</p></td>
                 <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{o.items?.length} item(s)</td>
                 <td className="px-4 py-3 font-black text-navy dark:text-white text-sm">{o.totalPrice}</td>
@@ -381,7 +389,7 @@ export default function OrdersPage(){
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
             <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-5"><AlertTriangle className="w-7 h-7 text-red-500"/></div>
             <h2 className="text-xl font-black text-navy dark:text-white mb-2">Empty Recycle Bin?</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">This will permanently delete <strong>{trash.length}</strong> order(s). This cannot be undone.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">This will permanently delete <strong>{visibleTrash.length}</strong> order(s). This cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={()=>setShowEmptyConfirm(false)} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700">Cancel</button>
               <button onClick={emptyTrash} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-xs uppercase tracking-widest">Delete All</button>
