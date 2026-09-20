@@ -100,6 +100,12 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
+    // Public Merchandise
+    match /public_merchandise/{itemId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
     // Merch requests / orders
     // All staff can read, create, update status fields
     // Only manageOrders permission can hard-delete (empty trash)
@@ -109,6 +115,14 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isStaff();
       allow delete: if isSignedIn() && hasPermission('manageOrders');
+    }
+
+    // Public orders
+    match /public_orders/{reqId} {
+      allow read: if isStaff();
+      allow create: if true; // Public customers can submit orders
+      allow update: if isStaff();
+      allow delete: if isStaff() && hasPermission('manageOrders');
     }
 
     // Suggestions

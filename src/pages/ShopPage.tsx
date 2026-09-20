@@ -16,6 +16,8 @@ const RECEIPT_MAX_MB=15;
 
 export default function ShopPage(){
   const[items,setItems]=useState<Merchandise[]>([]);
+  const[filterCat,setFilterCat]=useState('all');
+  const[showAllFilterCats,setShowAllFilterCats]=useState(false);
   const[loading,setLoading]=useState(true);
   const[cartOpen,setCartOpen]=useState(false);
   const[detailItem,setDetailItem]=useState<Merchandise|null>(null);
@@ -126,6 +128,17 @@ export default function ShopPage(){
   const detailMaxed=detailStock!==undefined&&detailQty>=detailStock;
   const detailOutOfStock=detailStock!==undefined&&detailStock<=0;
 
+  const categoryCounts = items.reduce((acc, item) => {
+    if (item.category) acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sortedCats = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  const popularCats = sortedCats.slice(0, 4);
+  const otherCats = sortedCats.slice(4);
+  const displayedFilterCats = showAllFilterCats ? sortedCats : popularCats;
+
+  const filteredItems = filterCat === 'all' ? items : items.filter(i => i.category === filterCat);
+
   return(<div className="min-h-screen pt-28 pb-16 bg-slate-50 dark:bg-darkbg">
     <div className="container mx-auto px-4"><div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-10">
@@ -135,9 +148,20 @@ export default function ShopPage(){
           {totalItems>0&&<span className="absolute -top-2 -right-2 w-5 h-5 bg-gold text-navy rounded-full text-xs font-black flex items-center justify-center">{totalItems}</span>}
         </button>
       </div>
+      {items.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-8">
+          <button onClick={()=>setFilterCat('all')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterCat==='all'?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-navy dark:hover:text-white shadow-sm'}`}>All ({items.length})</button>
+          {displayedFilterCats.map(c=><button key={c} onClick={()=>setFilterCat(c)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterCat===c?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-navy dark:hover:text-white shadow-sm'}`}>{c}</button>)}
+          {otherCats.length > 0 && (
+            <button onClick={()=>setShowAllFilterCats(!showAllFilterCats)} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all bg-white dark:bg-slate-800 text-slate-400 hover:text-navy dark:hover:text-white shadow-sm">
+              {showAllFilterCats ? 'Show Less' : `+ ${otherCats.length} More`}
+            </button>
+          )}
+        </div>
+      )}
       {loading?<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">{[...Array(8)].map((_,i)=><div key={i} className="bg-white dark:bg-slate-800 rounded-2xl h-64 animate-pulse"/>)}</div>
-      :items.length===0?<div className="text-center py-20 text-slate-400"><ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-30"/><p className="font-bold">Shop coming soon!</p></div>
-      :<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">{items.map(item=>{
+      :filteredItems.length===0?<div className="text-center py-20 text-slate-400"><ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-30"/><p className="font-bold">No items found.</p></div>
+      :<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">{filteredItems.map(item=>{
         const hasVariants=(item.pricingOptions||[]).some(o=>o.isActive);
         const allOutOfStock=hasVariants&&(item.pricingOptions||[]).filter(o=>o.isActive).every(o=>(o.stock??1)<=0);
         return(

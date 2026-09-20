@@ -4,19 +4,28 @@ import{db} from '../../firebase';
 import{Plus,Edit2,Trash2,X,Image,Save,Eye,EyeOff,ShoppingBag,DollarSign,Package,Check,ChevronDown,ChevronUp} from 'lucide-react';
 import{useToast} from '../../contexts/ToastContext';
 import type{Merchandise,PricingOption} from '../../types';
-const CADET_CATS=["Uniform","Accessories","Equipment","Stationery","Other"];
-const PUBLIC_CATS=["Gift Baskets","T-Shirts","Accessories","Other"];
-const EMPTY:Partial<Merchandise>={name:"",description:"",price:"",image:"",category:"Uniform",isPublished:false,pricingOptions:[],totalStock:0};
+const EMPTY:Partial<Merchandise>={name:"",description:"",price:"",image:"",category:"",isPublished:false,pricingOptions:[],totalStock:0};
 const EO:PricingOption={label:"",price:"",isActive:true,stock:0};
 export default function MerchandisePage(){
   const[storeMode,setStoreMode]=useState<'cadet'|'public'>('cadet');
   const activeCollection=storeMode==='cadet'?'merchandise':'public_merchandise';
-  const activeCats=storeMode==='cadet'?CADET_CATS:PUBLIC_CATS;
 
   const[items,setItems]=useState<Merchandise[]>([]);const[loading,setLoading]=useState(true);
   const[open,setOpen]=useState(false);const[editing,setEditing]=useState<Merchandise|null>(null);const[form,setForm]=useState<Partial<Merchandise>>(EMPTY);
   const[saving,setSaving]=useState(false);const[filterCat,setFilterCat]=useState('all');const[expanded,setExpanded]=useState<string|null>(null);
+  const[showAllFilterCats,setShowAllFilterCats]=useState(false);
+  const[showAllFormCats,setShowAllFormCats]=useState(false);
   const imgRef=useRef<HTMLInputElement>(null);const{showToast}=useToast();
+
+  const categoryCounts = items.reduce((acc, item) => {
+    if (item.category) acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sortedCats = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  const popularCats = sortedCats.slice(0, 4);
+  const otherCats = sortedCats.slice(4);
+  const displayedFilterCats = showAllFilterCats ? sortedCats : popularCats;
+  const displayedFormCats = showAllFormCats ? sortedCats : popularCats;
   
   useEffect(()=>{
     setLoading(true);
@@ -37,14 +46,22 @@ export default function MerchandisePage(){
   const filtered=filterCat==='all'?items:items.filter(i=>i.category===filterCat);
   return(<div className="space-y-6">
     <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
-      <button onClick={()=>{setStoreMode('cadet');setFilterCat('all');}} className={`px-4 py-2 rounded-lg text-sm font-black transition-colors ${storeMode==='cadet'?'bg-white dark:bg-slate-700 text-navy dark:text-white shadow-sm':'text-slate-500 hover:text-navy dark:hover:text-white'}`}>Cadet Store</button>
-      <button onClick={()=>{setStoreMode('public');setFilterCat('all');}} className={`px-4 py-2 rounded-lg text-sm font-black transition-colors ${storeMode==='public'?'bg-white dark:bg-slate-700 text-ocean dark:text-gold shadow-sm':'text-slate-500 hover:text-navy dark:hover:text-white'}`}>Ocean Blue JA Stores</button>
+      <button onClick={()=>{setStoreMode('cadet');setFilterCat('all');}} className={`px-4 py-2 rounded-lg text-sm font-black transition-colors ${storeMode==='cadet'?'bg-white dark:bg-slate-600 text-navy dark:text-white shadow-sm':'text-slate-500 hover:text-navy dark:hover:text-white'}`}>Cadet Store</button>
+      <button onClick={()=>{setStoreMode('public');setFilterCat('all');}} className={`px-4 py-2 rounded-lg text-sm font-black transition-colors ${storeMode==='public'?'bg-white dark:bg-slate-600 text-ocean dark:text-gold shadow-sm':'text-slate-500 hover:text-navy dark:hover:text-white'}`}>Ocean Blue JA Stores</button>
     </div>
     <div className="flex items-center justify-between flex-wrap gap-3">
       <div><h1 className="text-2xl font-black text-navy dark:text-white uppercase tracking-tight">{storeMode==='cadet'?'Cadet Merchandise':'Public Merchandise'}</h1><p className="text-slate-500 text-sm mt-1">{items.filter(i=>i.isPublished).length} published · {items.filter(i=>!i.isPublished).length} drafts</p></div>
       <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 bg-navy text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-ocean"><Plus className="w-4 h-4"/>Add Item</button>
     </div>
-    <div className="flex gap-2 flex-wrap">{['all',...activeCats].map(c=><button key={c} onClick={()=>setFilterCat(c)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterCat===c?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-navy dark:hover:text-white'}`}>{c==='all'?`All (${items.length})`:c}</button>)}</div>
+    <div className="flex gap-2 flex-wrap">
+      <button onClick={()=>setFilterCat('all')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterCat==='all'?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-navy dark:hover:text-white'}`}>All ({items.length})</button>
+      {displayedFilterCats.map(c=><button key={c} onClick={()=>setFilterCat(c)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filterCat===c?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 hover:text-navy dark:hover:text-white'}`}>{c}</button>)}
+      {otherCats.length > 0 && (
+        <button onClick={()=>setShowAllFilterCats(!showAllFilterCats)} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all bg-white dark:bg-slate-800 text-slate-400 hover:text-navy dark:hover:text-white">
+          {showAllFilterCats ? 'Show Less' : `+ ${otherCats.length} More`}
+        </button>
+      )}
+    </div>
     {loading?<div className="space-y-3">{[...Array(4)].map((_,i)=><div key={i} className="bg-white dark:bg-slate-800 rounded-2xl h-20 animate-pulse"/>)}</div>
     :filtered.length===0?<div className="bg-white dark:bg-slate-800 rounded-2xl py-16 text-center text-slate-400"><ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30"/><p className="font-bold text-sm">No items yet.</p></div>
     :<div className="space-y-3">{filtered.map(item=>(
@@ -72,7 +89,29 @@ export default function MerchandisePage(){
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 shrink-0"><h2 className="font-black text-navy dark:text-white text-lg">{editing?'Edit Item':'New Item'}</h2><button onClick={close} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-5 h-5 text-slate-400"/></button></div>
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Category</label><div className="flex gap-2 flex-wrap">{activeCats.map(c=><button key={c} type="button" onClick={()=>set('category',c)} className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${form.category===c?'bg-navy text-white':'bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-navy dark:hover:text-white'}`}>{c}</button>)}</div></div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Category *</label>
+            {sortedCats.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-3">
+                {displayedFormCats.map(c=><button key={c} type="button" onClick={()=>set('category',c)} className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${form.category===c?'bg-navy text-white':'bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-navy dark:hover:text-white'}`}>{c}</button>)}
+                {otherCats.length > 0 && (
+                  <button type="button" onClick={()=>setShowAllFormCats(!showAllFormCats)} className="px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-navy dark:hover:text-white">
+                    {showAllFormCats ? 'Show Less' : 'More...'}
+                  </button>
+                )}
+              </div>
+            )}
+            <input 
+              list="category-options"
+              value={form.category||''}
+              onChange={e=>set('category',e.target.value)}
+              placeholder="e.g. Pants"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none focus:ring-2 focus:ring-navy/20 text-sm"
+            />
+            <datalist id="category-options">
+              {sortedCats.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Item Name *</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. OBJICC Beret" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none focus:ring-2 focus:ring-navy/20 text-sm"/></div>
             <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Base Price *</label><div className="relative"><DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input value={form.price||''} onChange={e=>set('price',e.target.value)} placeholder="JMD $1,500" className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm"/></div></div>
