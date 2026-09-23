@@ -124,7 +124,7 @@ function GuestRedirect(){
 }
 
 export default function App(){
-  return(<BrowserRouter>
+  return(<BrowserRouter basename={import.meta.env.BASE_URL}>
     <ScrollToTop/>
     <UserProvider><ThemeProvider><ToastProvider><NavOffsetProvider>
       <SessionManager/>

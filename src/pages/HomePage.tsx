@@ -2,6 +2,7 @@ import{Link} from 'react-router-dom';
 import{ArrowRight,Shield,Users,Star,ChevronDown,ShoppingBag} from 'lucide-react';
 import{useUser} from '../contexts/UserContext';
 import NoticeBoard from '../components/features/NoticeBoard';
+import{publicAsset}from '../lib/publicAsset';
 export default function HomePage(){
   const{systemSettings,firebaseUser,isMember,isPending}=useUser();
   return(<div className="flex flex-col">
@@ -17,7 +18,7 @@ export default function HomePage(){
         {systemSettings.logoUrl&&(
           <div className="flex justify-center mb-8">
             <div className="logo-hero-wrap">
-              <img src={systemSettings.logoUrl} alt={systemSettings.orgName}
+              <img src={publicAsset(systemSettings.logoUrl)} alt={systemSettings.orgName}
                 onError={e=>{const img=e.target as HTMLImageElement;if(img.src!==window.location.origin+'/logo.png')img.src='/logo.png';else img.closest('.logo-hero-wrap')?.classList.add('hidden');}}/>
             </div>
           </div>

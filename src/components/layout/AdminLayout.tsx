@@ -4,6 +4,7 @@ import{LayoutDashboard,Users,FileText,ShoppingBag,Settings,Shield,MessageSquare,
 import{signOut} from 'firebase/auth';
 import{auth} from '../../firebase';
 import{useUser} from '../../contexts/UserContext';
+import{publicAsset} from '../../lib/publicAsset';
 const NAV=[
   {label:'Dashboard',href:'/admin',icon:LayoutDashboard},
   {label:'Applications',href:'/admin/applications',icon:FileText,perm:'manageApplications'},
@@ -30,7 +31,7 @@ export default function AdminLayout(){
     <div className="flex flex-col h-full">
       <div className={`flex items-center gap-3 p-4 border-b border-white/10 ${collapsed?'justify-center':'justify-between'}`}>
         {!collapsed&&<div className="flex items-center gap-2">
-          {systemSettings.logoUrl&&<div className="logo-nav-wrap w-8 h-8"><img src={systemSettings.logoUrl} alt="" className="w-6 h-6 object-contain mix-blend-screen"/></div>}
+          {systemSettings.logoUrl&&<div className="logo-nav-wrap w-8 h-8"><img src={publicAsset(systemSettings.logoUrl)} alt="" className="w-6 h-6 object-contain mix-blend-screen"/></div>}
           <span className="text-white font-black text-sm uppercase tracking-tighter">Admin</span>
         </div>}
         <button onClick={()=>setCollapsed(!collapsed)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg hidden lg:block">

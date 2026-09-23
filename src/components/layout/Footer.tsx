@@ -1,6 +1,7 @@
 import{Link} from 'react-router-dom';
 import{MapPin,Phone,Mail} from 'lucide-react';
 import{useUser} from '../../contexts/UserContext';
+import{publicAsset}from '../../lib/publicAsset';
 export default function Footer(){
   const{systemSettings}=useUser();
   const year=new Date().getFullYear();
@@ -11,7 +12,7 @@ export default function Footer(){
           <div className="flex flex-col gap-4">
             {systemSettings.logoUrl&&(
               <div className="logo-footer-wrap">
-                <img src={systemSettings.logoUrl} alt={systemSettings.orgName}
+                <img src={publicAsset(systemSettings.logoUrl)} alt={systemSettings.orgName}
                   onError={e=>{const img=e.target as HTMLImageElement;if(img.src!==window.location.origin+'/logo.png')img.src='/logo.png';else img.closest('.logo-footer-wrap')?.classList.add('hidden');}}/>
               </div>
             )}

@@ -7,6 +7,7 @@ import{collection,query,where,onSnapshot} from 'firebase/firestore';
 import{useUser} from '../../contexts/UserContext';
 import{useTheme} from '../../contexts/ThemeContext';
 import EmailVerificationBanner from '../EmailVerificationBanner';
+import{publicAsset}from '../../lib/publicAsset';
 export default function Navbar(){
   const[scrolled,setScrolled]=useState(false);
   const[mobileOpen,setMobileOpen]=useState(false);
@@ -48,7 +49,7 @@ export default function Navbar(){
         <Link to="/" className="flex items-center gap-3 group shrink-0">
           {systemSettings.logoUrl&&!logoError?(
             <div className="logo-nav-wrap">
-              <img src={systemSettings.logoUrl} alt={systemSettings.orgName}
+              <img src={publicAsset(systemSettings.logoUrl)} alt={systemSettings.orgName}
                 onError={e=>{const img=e.target as HTMLImageElement;if(img.src!==window.location.origin+'/logo.png')img.src='/logo.png';else setLogoError(true);}}/>
             </div>
           ):(
