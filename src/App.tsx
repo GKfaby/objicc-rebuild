@@ -17,7 +17,9 @@ import ScrollToTop from './components/ScrollToTop';
 import{signInWithEmailAndPassword,signInWithPopup} from 'firebase/auth';
 import{auth,googleProvider} from './firebase';
 import{Lock,X,Eye,EyeOff} from 'lucide-react';
-
+import{signOut}from'firebase/auth';
+import{db}from'./firebase';
+import{doc,getDoc}from'firebase/firestore';
 import HomePage from './pages/HomePage';
 import EventsPage from './pages/EventsPage';
 import ContactPage from './pages/ContactPage';
@@ -49,9 +51,17 @@ function AdminLoginPanel({onClose}:{onClose:()=>void}){
   const[email,setEmail]=useState('');const[password,setPassword]=useState('');
   const[showPass,setShowPass]=useState(false);const[loading,setLoading]=useState(false);const[error,setError]=useState('');
   const handleLogin=async(e:React.FormEvent)=>{e.preventDefault();setLoading(true);setError('');
-    try{await signInWithEmailAndPassword(auth,email,password);}catch{setError('Invalid credentials.');}finally{setLoading(false);}};
+    try{
+      const credential=await signInWithEmailAndPassword(auth,email,password);
+      const profile=await getDoc(doc(db,'users',credential.user.uid));
+      if(!['super_admin','admin'].includes(profile.data()?.role)){await signOut(auth);setError('This account does not have administrator access.');}
+    }catch{setError('Invalid credentials.');}finally{setLoading(false);}};
   const handleGoogle=async()=>{setLoading(true);setError('');
-    try{await signInWithPopup(auth,googleProvider);}catch{setError('Google sign-in failed.');}finally{setLoading(false);}};
+    try{
+      const credential=await signInWithPopup(auth,googleProvider);
+      const profile=await getDoc(doc(db,'users',credential.user.uid));
+      if(!['super_admin','admin'].includes(profile.data()?.role)){await signOut(auth);setError('This account does not have administrator access.');}
+    }catch{setError('Google sign-in failed.');}finally{setLoading(false);}};
   return(<div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-80 pointer-events-auto animate-slide-up">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
@@ -96,13 +106,12 @@ function MaintenanceGate({children}:{children:React.ReactNode}){
         <h1 className="text-3xl font-black uppercase tracking-tight mb-4">Under Maintenance</h1>
         <p className="text-white/60 leading-relaxed">{systemSettings.maintenanceMessage||"We are down for scheduled maintenance. Back shortly!"}</p>
       </div>
-      <button onClick={()=>setShowLogin(!showLogin)} className="fixed bottom-4 right-4 w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 transition-colors" tabIndex={-1}/>
+      <button onClick={()=>setShowLogin(!showLogin)} aria-label="Administrator access" title="Administrator access" className="fixed bottom-4 right-4 p-2 rounded-full text-white/20 hover:text-white/60 hover:bg-white/10 transition-colors"><Lock className="w-4 h-4"/></button>
       {showLogin&&<AdminLoginPanel onClose={()=>setShowLogin(false)}/>}
     </div>);
   }
   return<>{children}</>;
 }
-
 function PublicLayout({children}:{children:React.ReactNode}){
   const{bannerHeight}=useNavOffset();
   return(<><Navbar/><main className="min-h-screen" style={{paddingTop:bannerHeight}}>{children}</main><Footer/></>);

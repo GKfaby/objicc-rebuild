@@ -129,7 +129,7 @@ export interface MerchRequest {
   id:string; userUid:string; requesterName:string; cadetName:string; phone:string;
   customerName?:string; customerPhone?:string; source?:'cadet'|'public'; orderCollection?:'merch_requests'|'public_orders';
   items:CartItem[]; totalPrice:string; paymentMethod:'online'|'walk-in';
-  paymentStatus:'pending'|'paid'|'canceled'; status:'pending'|'completed'|'canceled';
+  paymentStatus:'pending'|'paid'|'canceled'; status:'pending'|'delivered'|'completed'|'canceled';
   deleted?:boolean; deletedAt?:any; requestId?:string; createdAt:any;
   paymentSubOption?:'walk-in'|'pay-now'|'receipt'; receiptUrl?:string|null; receiptFileName?:string; receiptUploadPending?:boolean;
 }

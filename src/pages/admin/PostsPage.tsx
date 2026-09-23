@@ -1,3 +1,5 @@
+import{uploadToCloudinary}from '../../lib/cloudinary';
+import ImageCropDialog from '../../components/ImageCropDialog';
 import{useState,useEffect,useRef} from 'react';
 import{collection,onSnapshot,addDoc,updateDoc,deleteDoc,doc,serverTimestamp,orderBy,query} from 'firebase/firestore';
 import{db} from '../../firebase';
@@ -14,6 +16,7 @@ export default function PostsPage(){
   const[saving,setSaving]=useState(false);const[uploading,setUploading]=useState(false);
   const[filterType,setFilterType]=useState<"all"|"notice"|"event">("all");
   const[expanded,setExpanded]=useState<string|null>(null);
+  const[cropFile,setCropFile]=useState<File|null>(null);
   const imgRef=useRef<HTMLInputElement>(null);const{showToast}=useToast();
   useEffect(()=>{const q=query(collection(db,'posts'),orderBy('createdAt','desc'));return onSnapshot(q,snap=>{setPosts(snap.docs.map(d=>({id:d.id,...d.data()} as Post)));setLoading(false);});},[]);
   useEffect(()=>onSnapshot(collection(db,'roles'),snap=>setRoleDocs(Object.fromEntries(snap.docs.map(d=>[d.id,d.data()])))),[]);
@@ -23,6 +26,8 @@ export default function PostsPage(){
   const close=()=>{setOpen(false);setEditing(null);setForm(EMPTY);};
   const set=(k:keyof Post,v:any)=>setForm(p=>({...p,[k]:v}));
   const toggleRole=(r:string)=>set('allowedRoles',(form.allowedRoles||[]).includes(r)?(form.allowedRoles||[]).filter(x=>x!==r):[...(form.allowedRoles||[]),r]);
+  const handleImageSelected=(e:React.ChangeEvent<HTMLInputElement>)=>{const file=e.target.files?.[0];if(file)setCropFile(file);e.target.value='';};
+  const handleCroppedImage=async(file:File)=>{setCropFile(null);setUploading(true);try{set('image',await uploadToCloudinary(file,'objicc/posts'));showToast('Image uploaded!','success');}catch(err){showToast(err instanceof Error?err.message:'Image upload failed.','error');}finally{setUploading(false);}};
   const handleSave=async()=>{if(!form.title?.trim()||!form.date?.trim()||!form.description?.trim()){showToast('Fill in all required fields.','error');return;}setSaving(true);
     try{const d={...form,allowedRoles:(form.allowedRoles||[]).filter(r=>!UNRESTRICTED_ROLES.has(r)),updatedAt:serverTimestamp()};
       if(editing)await updateDoc(doc(db,'posts',editing.id),d);else await addDoc(collection(db,'posts'),{...d,createdAt:serverTimestamp(),likes:0});
@@ -56,6 +61,7 @@ export default function PostsPage(){
         {expanded===p.id&&<div className="px-5 pb-4 border-t border-slate-50 dark:border-slate-700 pt-3"><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{p.description}</p></div>}
       </div>
     ))}</div>}
+    {cropFile&&<ImageCropDialog file={cropFile} onCancel={()=>setCropFile(null)} onConfirm={handleCroppedImage}/>} 
     {open&&<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 shrink-0"><h2 className="font-black text-navy dark:text-white text-lg">{editing?'Edit Post':'New Post'}</h2><button onClick={close} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-5 h-5 text-slate-400"/></button></div>
@@ -107,8 +113,8 @@ export default function PostsPage(){
           <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Description *</label><textarea rows={4} value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="Full description..." className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none focus:ring-2 focus:ring-navy/20 text-sm resize-none leading-relaxed"/></div>
           <div><label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Cover Image</label>
             <div className="flex gap-2"><input value={form.image||''} onChange={e=>set('image',e.target.value)} placeholder="Paste image URL..." className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-navy dark:text-white font-bold outline-none text-sm"/>
-              <input ref={imgRef} type="file" accept="image/*" className="hidden"/>
-              <button type="button" onClick={()=>imgRef.current?.click()} className="flex items-center gap-1 px-4 py-2.5 border-2 border-dashed border-slate-300 hover:border-navy dark:hover:border-gold rounded-xl text-xs font-black text-slate-500 hover:text-navy dark:hover:text-white"><Image className="w-4 h-4"/>URL</button>
+              <input ref={imgRef} type="file" accept="image/*" onChange={handleImageSelected} className="hidden"/>
+              <button type="button" disabled={uploading} onClick={()=>imgRef.current?.click()} className="flex items-center gap-1 px-4 py-2.5 border-2 border-dashed border-slate-300 hover:border-navy dark:hover:border-gold rounded-xl text-xs font-black text-slate-500 hover:text-navy dark:hover:text-white disabled:opacity-50"><Image className="w-4 h-4"/>{uploading?'Uploading...':'Upload'}</button>
             </div>
             {form.image&&<div className="mt-2 relative"><img src={form.image} alt="Preview" className="w-full h-36 object-cover rounded-xl"/><button onClick={()=>set('image','')} className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-lg"><X className="w-3 h-3"/></button></div>}
           </div>

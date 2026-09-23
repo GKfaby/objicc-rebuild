@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
+import { uploadToCloudinary } from '../lib/cloudinary';
 import { ShoppingBag, Plus, Minus, Trash2, ShoppingCart, X, Check, PackageX, Store, CreditCard, Upload, FileText, Clock, ArrowLeft, Paperclip, User, Phone } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useToast } from '../contexts/ToastContext';
@@ -169,10 +169,7 @@ export default function PublicShopPage() {
     try {
       let receiptUrl: string | null = null;
       try {
-        const path = `receipts/public/${Date.now()}-${receiptFile.name}`;
-        const fileRef = ref(storage, path);
-        await uploadBytes(fileRef, receiptFile);
-        receiptUrl = await getDownloadURL(fileRef);
+        receiptUrl = await uploadToCloudinary(receiptFile, 'objicc/receipts/public');
       } catch (uploadErr) {
         console.warn('Receipt upload unavailable (Storage not yet configured):', uploadErr);
         showToast("Order submitted, but we couldn't upload your receipt right now -- please bring a copy to the office.", 'info');

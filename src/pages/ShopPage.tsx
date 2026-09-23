@@ -1,7 +1,7 @@
 import{useState,useEffect} from 'react';
 import{collection,query,where,onSnapshot,addDoc,serverTimestamp} from 'firebase/firestore';
-import{ref,uploadBytes,getDownloadURL} from 'firebase/storage';
-import{db,storage} from '../firebase';
+import{uploadToCloudinary}from '../lib/cloudinary';
+import{db}from '../firebase';
 import{ShoppingBag,Plus,Minus,Trash2,ShoppingCart,X,Check,PackageX,Store,CreditCard,Upload,FileText,Clock,ArrowLeft,Paperclip} from 'lucide-react';
 import{useUser} from '../contexts/UserContext';
 import{useToast} from '../contexts/ToastContext';
@@ -109,18 +109,9 @@ export default function ShopPage(){
     if(!receiptFile||!profile)return;
     setUploadingReceipt(true);
     try{
-      // Placeholder-safe: Firebase Storage isn't provisioned on this
-      // project yet (billing/Storage setup is planned for later). Once
-      // it is, this upload will just start working with no code changes
-      // needed. Until then, we catch the failure and still submit the
-      // order so nothing blocks the member -- just flagged for staff to
-      // follow up on the receipt manually.
       let receiptUrl:string|null=null;
       try{
-        const path=`receipts/${profile.uid}/${Date.now()}-${receiptFile.name}`;
-        const fileRef=ref(storage,path);
-        await uploadBytes(fileRef,receiptFile);
-        receiptUrl=await getDownloadURL(fileRef);
+        receiptUrl=await uploadToCloudinary(receiptFile,`objicc/receipts/${profile.uid}`);
       }catch(uploadErr){
         console.warn('Receipt upload unavailable (Storage not yet configured):',uploadErr);
         showToast("Order submitted, but we couldn't upload your receipt right now -- please bring a copy to the office.",'info');

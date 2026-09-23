@@ -8,6 +8,7 @@ import type{MerchRequest,CartItem} from '../../types';
 
 const SS:Record<string,string>={
   pending:'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  delivered:'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
   completed:'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
   canceled:'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
 };
@@ -23,7 +24,7 @@ export default function OrdersPage(){
   const[loading,setLoading]=useState(true);
   const[sel,setSel]=useState<MerchRequest|null>(null);
   const[search,setSearch]=useState('');
-  const[filter,setFilter]=useState<'all'|'pending'|'completed'|'canceled'>('all');
+  const[filter,setFilter]=useState<'all'|'pending'|'delivered'|'completed'|'canceled'>('all');
   const[sourceFilter,setSourceFilter]=useState<'all'|'cadet'|'public'>('all');
   const[tab,setTab]=useState<'orders'|'trash'>('orders');
   const[showEmptyConfirm,setShowEmptyConfirm]=useState(false);
@@ -74,8 +75,8 @@ export default function OrdersPage(){
   };
 
   // ── General actions (all staff) ──────────────────────────────────────────
-  const markPaid=async(o:MerchRequest)=>{await upd(o.id,{paymentStatus:'paid'});showToast('Marked as paid','success');};
-  const complete=async(o:MerchRequest)=>{await upd(o.id,{status:'completed',paymentStatus:'paid'});showToast('Order completed','success');};
+  const markPaid=async(o:MerchRequest)=>{const nextStatus=o.status==='delivered'?'completed':o.status;await upd(o.id,{paymentStatus:'paid',status:nextStatus});showToast(nextStatus==='completed'?'Order completed':'Marked as paid',nextStatus==='completed'?'success':'success');};
+  const markDelivered=async(o:MerchRequest)=>{const nextStatus=o.paymentStatus==='paid'?'completed':'delivered';await upd(o.id,{status:nextStatus});showToast(nextStatus==='completed'?'Order completed':'Marked as delivered','success');};
   const softDelete=async(o:MerchRequest)=>{
     if(!window.confirm('Move this order to the recycle bin?'))return;
     await upd(o.id,{deleted:true,deletedAt:serverTimestamp()} as any);
@@ -85,7 +86,7 @@ export default function OrdersPage(){
   // ── manageOrders-only actions ────────────────────────────────────────────
   const undoComplete=async(o:MerchRequest)=>{
     if(!canManage)return;
-    await upd(o.id,{status:'pending'});showToast('Order restored to pending','info');
+    await upd(o.id,{status:'pending',paymentStatus:'pending'});showToast('Delivery and payment reset','info');
   };
   const restoreFromTrash=async(o:MerchRequest)=>{
     if(!canManage)return;
@@ -105,7 +106,7 @@ export default function OrdersPage(){
 
   const visibleOrders=orders.filter(o=>sourceFilter==='all'||o.source===sourceFilter);
   const visibleTrash=trash.filter(o=>sourceFilter==='all'||o.source===sourceFilter);
-  const counts={all:visibleOrders.length,pending:visibleOrders.filter(o=>o.status==='pending').length,completed:visibleOrders.filter(o=>o.status==='completed').length,canceled:visibleOrders.filter(o=>o.status==='canceled').length};
+  const counts={all:visibleOrders.length,pending:visibleOrders.filter(o=>o.status==='pending').length,delivered:visibleOrders.filter(o=>o.status==='delivered').length,completed:visibleOrders.filter(o=>o.status==='completed').length,canceled:visibleOrders.filter(o=>o.status==='canceled').length};
   const pendingVal=visibleOrders.filter(o=>o.status==='pending').reduce((s,o)=>s+(parseFloat(o.totalPrice?.replace(/[^0-9.]/g,''))||0),0);
 
   // ── Export (exportOrders permission only) ────────────────────────────────
@@ -249,15 +250,15 @@ export default function OrdersPage(){
           </div>
         </div>
         <div className="px-6 pb-5 border-t border-slate-100 dark:border-slate-700 pt-4 flex flex-col gap-2 shrink-0">
-          {order.status==='pending'&&<>
+          {(order.status==='pending'||order.status==='delivered')&&<>
             {order.paymentStatus!=='paid'&&(
               <button onClick={()=>markPaid(order)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><Check className="w-4 h-4"/>Mark as Paid</button>
             )}
-            <button onClick={()=>complete(order)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-navy hover:bg-ocean text-white font-black rounded-xl text-xs uppercase tracking-widest"><Package className="w-4 h-4"/>Mark as Completed</button>
+            {order.status!=='delivered'&&<button onClick={()=>markDelivered(order)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-navy hover:bg-ocean text-white font-black rounded-xl text-xs uppercase tracking-widest"><Package className="w-4 h-4"/>Mark as Delivered</button>}
           </>}
           {/* manageOrders-only: undo complete */}
-          {canManage&&order.status==='completed'&&(
-            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Complete → Pending</button>
+          {canManage&&(order.status==='delivered'||order.status==='completed')&&(
+            <button onClick={()=>{undoComplete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-widest"><RotateCcw className="w-4 h-4"/>Undo Delivery & Payment</button>
           )}
           <button onClick={()=>{softDelete(order);onClose();}} className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-black rounded-xl text-xs uppercase tracking-widest"><Trash2 className="w-4 h-4"/>Move to Recycle Bin</button>
         </div>
@@ -288,8 +289,8 @@ export default function OrdersPage(){
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[{label:'Total',value:counts.all,icon:ShoppingBag,color:'text-navy dark:text-white'},{label:'Pending',value:counts.pending,icon:Clock,color:'text-amber-600 dark:text-amber-400'},{label:'Completed',value:counts.completed,icon:Check,color:'text-green-600 dark:text-green-400'},{label:'Canceled',value:counts.canceled,icon:XCircle,color:'text-red-500 dark:text-red-400'}].map(({label,value,icon:Icon,color})=>(
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[{label:'Total',value:counts.all,icon:ShoppingBag,color:'text-navy dark:text-white'},{label:'Pending',value:counts.pending,icon:Clock,color:'text-amber-600 dark:text-amber-400'},{label:'Delivered',value:counts.delivered,icon:Package,color:'text-blue-600 dark:text-blue-400'},{label:'Completed',value:counts.completed,icon:Check,color:'text-green-600 dark:text-green-400'},{label:'Canceled',value:counts.canceled,icon:XCircle,color:'text-red-500 dark:text-red-400'}].map(({label,value,icon:Icon,color})=>(
           <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
             <Icon className={`w-5 h-5 ${color} shrink-0`}/><div><p className="text-2xl font-black text-navy dark:text-white">{value}</p><p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p></div>
           </div>
@@ -351,7 +352,7 @@ export default function OrdersPage(){
       {tab==='orders'&&(<>
         <div className="flex gap-3 flex-wrap items-center">
           <div className="relative flex-1 min-w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, order ID…" className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-navy dark:text-white outline-none"/></div>
-          <div className="flex gap-2 flex-wrap">{(['all','cadet','public'] as const).map(s=><button key={s} onClick={()=>setSourceFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${sourceFilter===s?'bg-ocean text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-ocean dark:hover:text-white'}`}>{s==='all'?'All Stores':s==='public'?'Ocean Blue JA':'Cadet Shop'}</button>)}{(['all','pending','completed','canceled'] as const).map(s=><button key={s} onClick={()=>setFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter===s?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-navy dark:hover:text-white'}`}>{s} ({counts[s]})</button>)}</div>
+          <div className="flex gap-2 flex-wrap">{(['all','cadet','public'] as const).map(s=><button key={s} onClick={()=>setSourceFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${sourceFilter===s?'bg-ocean text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-ocean dark:hover:text-white'}`}>{s==='all'?'All Stores':s==='public'?'Ocean Blue JA':'Cadet Shop'}</button>)}{(['all','pending','delivered','completed','canceled'] as const).map(s=><button key={s} onClick={()=>setFilter(s)} className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter===s?'bg-navy text-white':'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-navy dark:hover:text-white'}`}>{s} ({counts[s]})</button>)}</div>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden">
           {loading?<div className="p-6 space-y-3">{[...Array(5)].map((_,i)=><div key={i} className="h-12 bg-slate-50 dark:bg-slate-700 rounded-xl animate-pulse"/>)}</div>
@@ -368,9 +369,9 @@ export default function OrdersPage(){
                 <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-black uppercase ${SS[o.status]||SS.pending}`}>{o.status}</span></td>
                 <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">
                   {/* Quick actions in row */}
-                  {o.status==='pending'&&o.paymentStatus!=='paid'&&<button onClick={()=>markPaid(o)} title="Mark paid" className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"><Check className="w-3.5 h-3.5"/></button>}
-                  {o.status==='pending'&&<button onClick={()=>complete(o)} title="Mark completed" className="p-1.5 text-navy dark:text-white hover:bg-navy/10 dark:hover:bg-white/10 rounded-lg"><Package className="w-3.5 h-3.5"/></button>}
-                  {canManage&&o.status==='completed'&&<button onClick={()=>undoComplete(o)} title="Undo complete" className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"><RotateCcw className="w-3.5 h-3.5"/></button>}
+                  {(o.status==='pending'||o.status==='delivered')&&o.paymentStatus!=='paid'&&<button onClick={()=>markPaid(o)} title="Mark paid" className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"><Check className="w-3.5 h-3.5"/></button>}
+                  {o.status==='pending'&&<button onClick={()=>markDelivered(o)} title="Mark delivered" className="p-1.5 text-navy dark:text-white hover:bg-navy/10 dark:hover:bg-white/10 rounded-lg"><Package className="w-3.5 h-3.5"/></button>}
+                  {canManage&&(o.status==='delivered'||o.status==='completed')&&<button onClick={()=>undoComplete(o)} title="Undo delivery and payment" className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"><RotateCcw className="w-3.5 h-3.5"/></button>}
                   <button onClick={()=>setSel(o)} className="p-1.5 hover:bg-navy/10 dark:hover:bg-white/10 rounded-lg"><Eye className="w-4 h-4 text-slate-400"/></button>
                   <button onClick={()=>softDelete(o)} title="Move to bin" className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-3.5 h-3.5"/></button>
                 </div></td>
